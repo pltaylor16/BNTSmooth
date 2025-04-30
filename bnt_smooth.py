@@ -1,5 +1,4 @@
 import numpy as np
-from sbi_lens.simulator.LogNormal_field import LogNormal_field
 import copy
 import pyccl as ccl
 
@@ -113,44 +112,6 @@ class LognormalWeakLensingSim:
             return ell, cl_dict
 
 
-    def generate_lognormal_fields(self, n_pix=256, map_size_deg=5.0):
-        """
-        Generate lognormal convergence maps for each tomographic bin using sbi_lens.
 
-        Parameters
-        ----------
-        n_pix : int
-            Number of pixels per side in the map (assumes square map).
-        map_size_deg : float
-            Size of the map in degrees (assumes square map).
-
-        Returns
-        -------
-        kappa_maps : list of ndarray
-            List of 2D lognormal κ maps for each tomographic bin.
-        """
-        # Compute auto power spectra
-        ell, cl_dict = self.compute_wl_cls()
-        kappa_maps = []
-
-        for i in range(self.nbins):
-            cl_ii = cl_dict[(i, i)]
-            shift = self.lognormal_shifts[i]
-            ell_input = ell.copy()
-            cl_input = cl_ii.copy()
-
-            lognormal_sim = LogNormal_field(
-                ell=ell_input,
-                cl=cl_input,
-                npix=n_pix,
-                map_size=map_size_deg,
-                shift=shift,
-                seed=self.rng.integers(1e6)
-            )
-
-            kappa_map = lognormal_sim.get_field()
-            kappa_maps.append(kappa_map)
-
-        return kappa_maps
 
 
