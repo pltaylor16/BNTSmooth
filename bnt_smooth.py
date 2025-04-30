@@ -133,3 +133,119 @@ class LognormalWeakLensingSim:
         return maps
 
 
+    def get_shell_zchi(self):
+        """
+        Compute effective redshift, comoving distance, and shell width for each redshift shell.
+
+        Returns
+        -------
+        z_eff : ndarray
+            Midpoint redshift of each shell.
+        chi_eff : ndarray
+            Comoving radial distance at z_eff [Mpc].
+        delta_chi : ndarray
+            Comoving shell width (chi_{i+1} - chi_i) [Mpc].
+        """
+        z_edges = np.linspace(0, self.zmax, self.nslices + 1)
+        z_eff = 0.5 * (z_edges[:-1] + z_edges[1:])
+
+        # PyCCL cosmology
+        cosmo = ccl.Cosmology(
+            Omega_c=self.cosmo_params["Omega_c"],
+            Omega_b=self.cosmo_params["Omega_b"],
+            h=self.cosmo_params["h"],
+            n_s=self.cosmo_params["n_s"],
+            sigma8=self.sigma8,
+            matter_power_spectrum="halofit",
+            extra_parameters={"halofit_version": "mead2020", "baryonic_feedback": self.baryon_feedback},
+        )
+
+        # Compute comoving distances at z_edges and z_eff
+        chi_edges = ccl.comoving_radial_distance(cosmo, 1.0 / (1 + z_edges))
+        chi_eff = ccl.comoving_radial_distance(cosmo, 1.0 / (1 + z_eff))
+
+        # Shell widths in comoving distance
+        delta_chi = chi_edges[1:] - chi_edges[:-1]
+
+        return z_eff, chi_eff, delta_chi
+
+
+    def get_lensing_kernels(self):
+        """
+        Compute lensing kernel q_i(chi) for each source bin at the matter shell midpoints.
+
+        Returns
+        -------
+        q_list : list of ndarray
+            List of arrays q_i(chi_eff) for each tomographic source bin.
+        """
+        # Effective z and chi for matter shells
+        z_eff, chi_eff, _ = self.get_shell_zchi()
+
+        # Build PyCCL cosmology
+        cosmo = ccl.Cosmology(
+            Omega_c=self.cosmo_params["Omega_c"],
+            Omega_b=self.cosmo_params["Omega_b"],
+            h=self.cosmo_params["h"],
+            n_s=self.cosmo_params["n_s"],
+            sigma8=self.sigma8,
+            matter_power_spectrum="halofit",
+            extra_parameters={"halofit_version": "mead2020", "baryonic_feedback": self.baryon_feedback},
+        )
+
+        q_list = []
+        for z_nz, n_z in self.nz_list:
+            # Normalize n(z)
+            n_z = n_z / np.trapz(n_z, z_nz)
+
+            # Compute lensing kernel q(chi_eff) for this source bin
+            q_arr = np.zeros_like(chi_eff)
+            for i, chi in enumerate(chi_eff):
+                a = 1.0 / (1.0 + z_eff[i])
+                chi_s = ccl.comoving_radial_distance(cosmo, 1.0 / (1.0 + z_nz))
+                w = np.zeros_like(z_nz)
+                mask = chi_s > chi
+                w[mask] = (chi_s[mask] - chi) / chi_s[mask]
+                c_light = 299792.458  # speed of light in km/s
+                q = 1.5 * (cosmo["Omega_m"]) * (cosmo["h"]**2) * (100 / c_light)**2
+                q *= a * chi * np.trapz(w * n_z, z_nz)
+                q_arr[i] = q
+
+            q_list.append(q_arr)
+
+        return q_list
+
+
+    def compute_kappa_maps(self, matter_maps):
+        """
+        Compute convergence κ maps for each tomographic source bin by integrating over matter shells.
+
+        Parameters
+        ----------
+        matter_maps : list of ndarray
+            Lognormal matter density maps for each shell (length = nslices).
+
+        Returns
+        -------
+        kappa_maps : list of ndarray
+            List of κ maps for each tomographic bin (length = nbins).
+        """
+        if len(matter_maps) != self.nslices:
+            raise ValueError("Number of matter maps must equal nslices.")
+
+        # Get lensing kernel and comoving shell widths
+        z_eff, chi_eff, delta_chi = self.get_shell_zchi()
+        q_list = self.get_lensing_kernels()  # one [nslices] array per tomo bin
+
+        npix = len(matter_maps[0])
+        kappa_maps = []
+
+        for q in q_list:  # Loop over tomographic bins
+            kappa = np.zeros(npix)
+            for i in range(self.nslices):
+                kappa += delta_chi[i] * q[i] * matter_maps[i]
+            kappa_maps.append(kappa)
+
+        return kappa_maps
+
+
