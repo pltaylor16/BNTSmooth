@@ -125,8 +125,9 @@ class LognormalWeakLensingSim:
             # Generate Gaussian field
             delta_g = hp.synfast(full_cl, nside=nside, verbose=False)
 
-            # Apply lognormal transformation with shift
-            delta_ln = np.exp(delta_g - self.lognormal_shift) - 1
+            # Apply lognormal transformation 
+            # glass eqn 12 in https://arxiv.org/pdf/2302.01942
+            delta_ln = self.lognormal_shift * (np.exp(delta_g) - 1)
 
             maps.append(delta_ln)
 
