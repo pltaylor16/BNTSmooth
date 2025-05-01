@@ -73,7 +73,6 @@ class LognormalWeakLensingSim:
 
 
 
-
     def compute_matter_cls(self):
         """
         Compute auto-spectra C_ell^{δδ} for narrow redshift slices using PyCCL.
