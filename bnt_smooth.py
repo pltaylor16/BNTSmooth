@@ -284,23 +284,36 @@ class LognormalWeakLensingSim:
 
         return N_ell_list
 
-
     def generate_noise_only_kappa_maps(self):
         """
-        Generate pure shape noise κ maps (no signal) based on sigma_eps and n_eff.
+        Generate pure shape noise κ maps (no signal) by Poisson sampling the galaxy counts per pixel,
+        and drawing Gaussian noise with variance σ_ε² / N_pix.
 
         Returns
         -------
         noise_maps : list of ndarray
-            List of Gaussian noise-only κ maps, one per tomographic bin.
+            List of noise-only κ maps, one per tomographic bin.
         """
         npix = hp.nside2npix(self.nside)
-        omega_pix_arcmin2 = hp.nside2pixarea(self.nside, degrees=True) * 3600.0  # in arcmin²
+        omega_pix_arcmin2 = hp.nside2pixarea(self.nside, degrees=True) * 3600.0  # arcmin²
 
         noise_maps = []
         for sigma_eps, n_eff in zip(self.sigma_eps_list, self.n_eff_list):
-            sigma_noise = sigma_eps / np.sqrt(2 * n_eff * omega_pix_arcmin2)
-            noise_map = self.rng.normal(0, sigma_noise, size=npix)
+            mean_ngal_per_pix = n_eff * omega_pix_arcmin2  # expected number of galaxies per pixel
+
+            # Poisson sample actual galaxy counts
+            ngal_pix = self.rng.poisson(lam=mean_ngal_per_pix, size=npix)
+
+            # Avoid divide-by-zero issues
+            ngal_pix_safe = np.where(ngal_pix == 0, 1, ngal_pix)
+
+            # Gaussian noise with σ² = σ_ε² / N_pix
+            noise_std = sigma_eps / np.sqrt(ngal_pix_safe)
+            noise_map = self.rng.normal(0, noise_std, size=npix)
+
+            # Set noise to 0 in empty pixels
+            noise_map[ngal_pix == 0] = 0.0
+
             noise_maps.append(noise_map)
 
         return noise_maps
