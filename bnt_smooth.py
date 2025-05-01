@@ -56,6 +56,18 @@ class LognormalWeakLensingSim:
         self.cosmo_params["sigma8"] = self.sigma8
         self.nslices = nslices
 
+        self.cosmo = ccl.Cosmology(
+            Omega_c=self.cosmo_params["Omega_c"],
+            Omega_b=self.cosmo_params["Omega_b"],
+            h=self.cosmo_params["h"],
+            n_s=self.cosmo_params["n_s"],
+            sigma8=self.sigma8,
+            matter_power_spectrum="camb",
+            extra_parameters = {"camb": {"halofit_version": "mead2020_feedback",
+                             "HMCode_logT_AGN": self.baryon_feedback}},
+        )
+
+
 
 
     def compute_matter_cls(self):
@@ -70,16 +82,6 @@ class LognormalWeakLensingSim:
         ell = np.arange(2, self.l_max + 1)
         z_edges = np.linspace(0, self.zmax, self.nslices + 1)
 
-        cosmo = ccl.Cosmology(
-            Omega_c=self.cosmo_params["Omega_c"],
-            Omega_b=self.cosmo_params["Omega_b"],
-            h=self.cosmo_params["h"],
-            n_s=self.cosmo_params["n_s"],
-            sigma8=self.sigma8,
-            matter_power_spectrum="halofit",
-            extra_parameters={"halofit_version": "mead2020", "baryonic_feedback": self.baryon_feedback},
-        )
-
         # Create number count tracers for each redshift shell
         tracers = []
         for z0, z1 in zip(z_edges[:-1], z_edges[1:]):
@@ -87,7 +89,7 @@ class LognormalWeakLensingSim:
             dz = z1 - z0
             dndz = np.ones_like(z) / dz
             tracer = ccl.NumberCountsTracer(
-                cosmo,
+                self.cosmo,
                 has_rsd=False,
                 dndz=(z, dndz),
                 bias=(z, np.ones_like(z))
@@ -97,7 +99,7 @@ class LognormalWeakLensingSim:
         # Compute auto-spectra only
         gls = []
         for i in range(self.nslices):
-            cl_ii = ccl.angular_cl(cosmo, tracers[i], tracers[i], ell)
+            cl_ii = ccl.angular_cl(self.cosmo, tracers[i], tracers[i], ell)
             gls.append(cl_ii)
 
         return gls
@@ -150,20 +152,10 @@ class LognormalWeakLensingSim:
         z_edges = np.linspace(0, self.zmax, self.nslices + 1)
         z_eff = 0.5 * (z_edges[:-1] + z_edges[1:])
 
-        # PyCCL cosmology
-        cosmo = ccl.Cosmology(
-            Omega_c=self.cosmo_params["Omega_c"],
-            Omega_b=self.cosmo_params["Omega_b"],
-            h=self.cosmo_params["h"],
-            n_s=self.cosmo_params["n_s"],
-            sigma8=self.sigma8,
-            matter_power_spectrum="halofit",
-            extra_parameters={"halofit_version": "mead2020", "baryonic_feedback": self.baryon_feedback},
-        )
 
         # Compute comoving distances at z_edges and z_eff
-        chi_edges = ccl.comoving_radial_distance(cosmo, 1.0 / (1 + z_edges))
-        chi_eff = ccl.comoving_radial_distance(cosmo, 1.0 / (1 + z_eff))
+        chi_edges = ccl.comoving_radial_distance(self.cosmo, 1.0 / (1 + z_edges))
+        chi_eff = ccl.comoving_radial_distance(self.cosmo, 1.0 / (1 + z_eff))
 
         # Shell widths in comoving distance
         delta_chi = chi_edges[1:] - chi_edges[:-1]
@@ -183,16 +175,6 @@ class LognormalWeakLensingSim:
         # Effective z and chi for matter shells
         z_eff, chi_eff, _ = self.get_shell_zchi()
 
-        # Build PyCCL cosmology
-        cosmo = ccl.Cosmology(
-            Omega_c=self.cosmo_params["Omega_c"],
-            Omega_b=self.cosmo_params["Omega_b"],
-            h=self.cosmo_params["h"],
-            n_s=self.cosmo_params["n_s"],
-            sigma8=self.sigma8,
-            matter_power_spectrum="halofit",
-            extra_parameters={"halofit_version": "mead2020", "baryonic_feedback": self.baryon_feedback},
-        )
 
         q_list = []
         for z_nz, n_z in self.nz_list:
@@ -203,12 +185,12 @@ class LognormalWeakLensingSim:
             q_arr = np.zeros_like(chi_eff)
             for i, chi in enumerate(chi_eff):
                 a = 1.0 / (1.0 + z_eff[i])
-                chi_s = ccl.comoving_radial_distance(cosmo, 1.0 / (1.0 + z_nz))
+                chi_s = ccl.comoving_radial_distance(self.cosmo, 1.0 / (1.0 + z_nz))
                 w = np.zeros_like(z_nz)
                 mask = chi_s > chi
                 w[mask] = (chi_s[mask] - chi) / chi_s[mask]
                 c_light = 299792.458  # speed of light in km/s
-                q = 1.5 * (cosmo["Omega_m"]) * (cosmo["h"]**2) * (100 / c_light)**2
+                q = 1.5 * (self.cosmo["Omega_m"]) * (self.cosmo["h"]**2) * (100 / c_light)**2
                 q *= a * chi * np.trapz(w * n_z, z_nz)
                 q_arr[i] = q
 
