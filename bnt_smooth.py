@@ -1,7 +1,7 @@
 import numpy as np
 import pyccl as ccl
 import healpy as hp
-
+from BNT import BNT as BNT
 
 class LognormalWeakLensingSim:
     def __init__(self, nz_list, n_eff_list, sigma_eps_list,
@@ -128,7 +128,8 @@ class LognormalWeakLensingSim:
             full_cl[2:] = cl
 
             # Generate Gaussian field
-            delta_g = hp.synfast(full_cl, nside=nside, verbose=False)
+            np.random.seed(self.seed)
+            delta_g = hp.synfast(full_cl, nside=nside)
 
             # Apply lognormal transformation 
             # glass eqn 12 in https://arxiv.org/pdf/2302.01942
@@ -155,7 +156,6 @@ class LognormalWeakLensingSim:
         z_edges = np.linspace(0, self.zmax, self.nslices + 1)
         z_eff = 0.5 * (z_edges[:-1] + z_edges[1:])
 
-
         # Compute comoving distances at z_edges and z_eff
         chi_edges = ccl.comoving_radial_distance(self.cosmo, 1.0 / (1 + z_edges))
         chi_eff = ccl.comoving_radial_distance(self.cosmo, 1.0 / (1 + z_eff))
@@ -177,7 +177,6 @@ class LognormalWeakLensingSim:
         """
         # Effective z and chi for matter shells
         z_eff, chi_eff, _ = self.get_shell_zchi()
-
 
         q_list = []
         for z_nz, n_z in self.nz_list:
@@ -235,55 +234,6 @@ class LognormalWeakLensingSim:
         return kappa_maps
 
 
-    def compute_kappa_moments(self, kappa_maps):
-        """
-        Compute the second and third moments of the κ maps for each tomographic bin.
-
-        Parameters
-        ----------
-        kappa_maps : list of ndarray
-            List of κ maps for each tomographic bin.
-
-        Returns
-        -------
-        moments_2 : ndarray
-            Array of second moments (⟨κ²⟩) for each tomographic bin.
-        moments_3 : ndarray
-            Array of third moments (⟨κ³⟩) for each tomographic bin.
-        """
-        nbins = len(kappa_maps)
-        moments_2 = np.zeros(nbins)
-        moments_3 = np.zeros(nbins)
-
-        for i, kappa in enumerate(kappa_maps):
-            moments_2[i] = np.mean(kappa**2)
-            moments_3[i] = np.mean(kappa**3)
-
-        return moments_2, moments_3
-
-
-    #this is purely for testing purposes to make sure I apply the correct amount of noise
-    def compute_shape_noise_cls(self):
-        """
-        Compute shape noise power spectra N_ell for each tomographic bin.
-
-        Returns
-        -------
-        N_ell_list : list of ndarray
-            List of arrays of shape noise Cls for each bin (flat Cl).
-        """
-        N_ell_list = []
-        fsky = 4 * np.pi  # Full sky steradians
-
-        # Convert n_eff from gal/arcmin² to gal/steradian:
-        arcmin2_to_steradian = (np.pi / (180 * 60))**2
-        for sigma_eps, n_eff in zip(self.sigma_eps_list, self.n_eff_list):
-            n_eff_sr = n_eff / arcmin2_to_steradian
-            N_ell = sigma_eps**2 / n_eff_sr
-            N_ell_list.append(np.full(self.l_max + 1, N_ell))  # flat Cl
-
-        return N_ell_list
-
     def generate_noise_only_kappa_maps(self):
         """
         Generate pure shape noise κ maps (no signal) by Poisson sampling the galaxy counts per pixel,
@@ -319,22 +269,20 @@ class LognormalWeakLensingSim:
         return noise_maps
 
 
-
-    def generate_data_vector(self):
+    def generate_noisy_kappa_maps(self):
         """
-        Run the full pipeline to generate a noisy κ data vector:
+        Run the pipeline to generate noisy κ maps:
         1. Set cosmology
         2. Generate matter maps
         3. Compute κ signal maps
         4. Generate noise maps
         5. Add signal and noise
-        6. Compute 2nd and 3rd moments
-        7. Return concatenated data vector [⟨κ²⟩₁, ..., ⟨κ²⟩ₙ, ⟨κ³⟩₁, ..., ⟨κ³⟩ₙ]
+        6. Return the noisy κ maps for each tomographic bin
 
         Returns
         -------
-        data_vector : ndarray
-            Concatenated array of second and third moments for all tomographic bins.
+        noisy_kappa_maps : list of ndarray
+            List of κ maps (signal + noise) for each tomographic bin.
         """
         self.set_cosmo()
 
@@ -342,15 +290,80 @@ class LognormalWeakLensingSim:
         kappa_maps = self.compute_kappa_maps(matter_maps)
         noise_maps = self.generate_noise_only_kappa_maps()
 
-        # Add signal + noise
-        noisy_maps = [kappa + noise for kappa, noise in zip(kappa_maps, noise_maps)]
+        noisy_kappa_maps = [kappa + noise for kappa, noise in zip(kappa_maps, noise_maps)]
 
-        # Compute moments
-        moments_2, moments_3 = self.compute_kappa_moments(noisy_maps)
+        return noisy_kappa_maps
 
-        # Concatenate into single data vector
-        data_vector = np.concatenate([moments_2, moments_3])
 
-        return data_vector
+class ProcessMaps(LognormalWeakLensingSim):
+    """
+    Subclass for processing κ maps after simulation.
+    Inherits all setup and map generation functionality from LognormalWeakLensingSim.
+    Intended for operations like smoothing, masking, moment calculation, and data vector extraction.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def compute_moments(self, maps):
+        """
+        Compute the second and third moments of a list of κ maps.
+
+        Parameters
+        ----------
+        maps : list of ndarray
+            List of κ maps (signal, noise, or combined), one per tomographic bin.
+
+        Returns
+        -------
+        moments_2 : ndarray
+            Second moments (⟨κ²⟩) for each tomographic bin.
+        moments_3 : ndarray
+            Third moments (⟨κ³⟩) for each tomographic bin.
+        """
+        nbins = len(maps)
+        moments_2 = np.zeros(nbins)
+        moments_3 = np.zeros(nbins)
+
+        for i, kappa in enumerate(maps):
+            moments_2[i] = np.mean(kappa**2)
+            moments_3[i] = np.mean(kappa**3)
+
+        return moments_2, moments_3
+
+
+	def get_bnt_matrix(self):
+	    """
+	    Construct the BNT matrix for source tomography.
+
+	    Returns
+	    -------
+	    BNT_matrix : ndarray
+	        A (N, N) matrix
+	    """
+	    chi_list = []
+	    normed_nz_list = []
+
+	    for z, nz in self.nz_list:
+	        chi = ccl.comoving_radial_distance(self.cosmo, 1.0 / (1.0 + z))
+	        nz /= np.trapz(nz, z)
+	        chi_list.append(chi)
+	        normed_nz_list.append(nz)
+	        z_arr = z
+
+	    B = BNT(z_arr, chi, normed_nz_list)
+	    BNT_matrix = B.get_matrix
+
+	    return BNT_matrix
+
+
+	def bnt_transform_kappa_maps(self);
+		pass
+
+
+	def inverse_bnt_tranform_kappa_maps(self):
+		pass
+
+		
 
 
