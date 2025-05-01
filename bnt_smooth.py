@@ -319,6 +319,7 @@ class LognormalWeakLensingSim:
         return noise_maps
 
 
+
     def generate_data_vector(self):
         """
         Run the full pipeline to generate a noisy κ data vector:
