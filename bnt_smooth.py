@@ -319,3 +319,37 @@ class LognormalWeakLensingSim:
         return noise_maps
 
 
+    def generate_data_vector(self):
+        """
+        Run the full pipeline to generate a noisy κ data vector:
+        1. Set cosmology
+        2. Generate matter maps
+        3. Compute κ signal maps
+        4. Generate noise maps
+        5. Add signal and noise
+        6. Compute 2nd and 3rd moments
+        7. Return concatenated data vector [⟨κ²⟩₁, ..., ⟨κ²⟩ₙ, ⟨κ³⟩₁, ..., ⟨κ³⟩ₙ]
+
+        Returns
+        -------
+        data_vector : ndarray
+            Concatenated array of second and third moments for all tomographic bins.
+        """
+        self.set_cosmo()
+
+        matter_maps = self.generate_matter_fields_from_scratch()
+        kappa_maps = self.compute_kappa_maps(matter_maps)
+        noise_maps = self.generate_noise_only_kappa_maps()
+
+        # Add signal + noise
+        noisy_maps = [kappa + noise for kappa, noise in zip(kappa_maps, noise_maps)]
+
+        # Compute moments
+        moments_2, moments_3 = self.compute_kappa_moments(noisy_maps)
+
+        # Concatenate into single data vector
+        data_vector = np.concatenate([moments_2, moments_3])
+
+        return data_vector
+
+
