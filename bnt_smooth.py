@@ -56,6 +56,8 @@ class LognormalWeakLensingSim:
         self.cosmo_params["sigma8"] = self.sigma8
         self.nslices = nslices
 
+
+    def set_cosmo(self):
         self.cosmo = ccl.Cosmology(
             Omega_c=self.cosmo_params["Omega_c"],
             Omega_b=self.cosmo_params["Omega_b"],
@@ -66,6 +68,8 @@ class LognormalWeakLensingSim:
             extra_parameters = {"camb": {"halofit_version": "mead2020_feedback",
                              "HMCode_logT_AGN": self.baryon_feedback}},
         )
+
+        return 0.
 
 
 
