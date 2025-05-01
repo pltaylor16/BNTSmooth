@@ -235,3 +235,74 @@ class LognormalWeakLensingSim:
         return kappa_maps
 
 
+    def compute_kappa_moments(self, kappa_maps):
+        """
+        Compute the second and third moments of the κ maps for each tomographic bin.
+
+        Parameters
+        ----------
+        kappa_maps : list of ndarray
+            List of κ maps for each tomographic bin.
+
+        Returns
+        -------
+        moments_2 : ndarray
+            Array of second moments (⟨κ²⟩) for each tomographic bin.
+        moments_3 : ndarray
+            Array of third moments (⟨κ³⟩) for each tomographic bin.
+        """
+        nbins = len(kappa_maps)
+        moments_2 = np.zeros(nbins)
+        moments_3 = np.zeros(nbins)
+
+        for i, kappa in enumerate(kappa_maps):
+            moments_2[i] = np.mean(kappa**2)
+            moments_3[i] = np.mean(kappa**3)
+
+        return moments_2, moments_3
+
+
+    #this is purely for testing purposes to make sure I apply the correct amount of noise
+    def compute_shape_noise_cls(self):
+        """
+        Compute shape noise power spectra N_ell for each tomographic bin.
+
+        Returns
+        -------
+        N_ell_list : list of ndarray
+            List of arrays of shape noise Cls for each bin (flat Cl).
+        """
+        N_ell_list = []
+        fsky = 4 * np.pi  # Full sky steradians
+
+        # Convert n_eff from gal/arcmin² to gal/steradian:
+        arcmin2_to_steradian = (np.pi / (180 * 60))**2
+        for sigma_eps, n_eff in zip(self.sigma_eps_list, self.n_eff_list):
+            n_eff_sr = n_eff / arcmin2_to_steradian
+            N_ell = sigma_eps**2 / n_eff_sr
+            N_ell_list.append(np.full(self.l_max + 1, N_ell))  # flat Cl
+
+        return N_ell_list
+
+
+    def generate_noise_only_kappa_maps(self):
+        """
+        Generate pure shape noise κ maps (no signal) based on sigma_eps and n_eff.
+
+        Returns
+        -------
+        noise_maps : list of ndarray
+            List of Gaussian noise-only κ maps, one per tomographic bin.
+        """
+        npix = hp.nside2npix(self.nside)
+        omega_pix_arcmin2 = hp.nside2pixarea(self.nside, degrees=True) * 3600.0  # in arcmin²
+
+        noise_maps = []
+        for sigma_eps, n_eff in zip(self.sigma_eps_list, self.n_eff_list):
+            sigma_noise = sigma_eps / np.sqrt(2 * n_eff * omega_pix_arcmin2)
+            noise_map = self.rng.normal(0, sigma_noise, size=npix)
+            noise_maps.append(noise_map)
+
+        return noise_maps
+
+
