@@ -84,15 +84,15 @@ seed = 1234
 
 
 lognormal_shift = 1.0
-nslices = 5
-l_max = 32
-nside = 32
+#nslices = 5
+#l_max = 32
+#nside = 32
 
-#nslices = 50
-#l_max = 3000
-#nside = 2048
+nslices = 50
+l_max = 3000
+nside = 2048
 
-n_realizations = 20
+n_realizations = 100
 
 step_frac = 0.05  # 5% step size for numerical derivative
 
