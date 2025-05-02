@@ -3,15 +3,18 @@ import pyccl as ccl
 import healpy as hp
 from BNT import BNT as BNT
 
+
 class LognormalWeakLensingSim:
-    def __init__(self, nz_list, n_eff_list, sigma_eps_list,
+    def __init__(self, z_array, nz_list, n_eff_list, sigma_eps_list,
                  baryon_feedback=3.13, seed=42, sigma8=0.8,
-                 lognormal_shift=0.0, l_max=256, zmax=3.0, nslices=50, cosmo_params=None):
+                 lognormal_shift=0.0, l_max=256, nslices=50, cosmo_params=None):
         """
         Initialize the lognormal weak lensing simulation.
 
         Parameters
         ----------
+        z_array : ndarray
+            Common redshift array to interpolate all n(z) distributions onto.
         nz_list : list of (z, nz) tuples
             Redshift distributions for each source bin.
         n_eff_list : list of float
@@ -28,10 +31,22 @@ class LognormalWeakLensingSim:
             Global lognormal shift parameter used by GLASS.
         l_max : int
             Maximum multipole for power spectrum generation.
+        nslices : int
+            Number of redshift slices for shell integration.
         cosmo_params : dict, optional
             Cosmological parameters.
         """
-        self.nz_list = nz_list
+        self.z_array = z_array
+        self.zmax = z_array.max()  # Set zmax automatically
+
+        # Interpolate all n(z) onto shared grid
+        from scipy.interpolate import interp1d
+        self.nz_list = []
+        for z_i, nz_i in nz_list:
+            interp_func = interp1d(z_i, nz_i, bounds_error=False, fill_value=0.0)
+            nz_interp = interp_func(z_array)
+            self.nz_list.append((z_array, nz_interp))
+
         self.n_eff_list = n_eff_list
         self.sigma_eps_list = sigma_eps_list
         self.baryon_feedback = baryon_feedback
@@ -40,10 +55,10 @@ class LognormalWeakLensingSim:
         self.sigma8 = sigma8
         self.l_max = l_max
         self.nside = l_max
-        self.zmax = zmax
         self.lognormal_shift = lognormal_shift
+        self.nslices = nslices
 
-        self.nbins = len(nz_list)
+        self.nbins = len(self.nz_list)
         if not (len(n_eff_list) == len(sigma_eps_list) == self.nbins):
             raise ValueError("n_eff_list and sigma_eps_list must match number of tomographic bins.")
 
@@ -54,7 +69,7 @@ class LognormalWeakLensingSim:
             "n_s": 0.96
         }
         self.cosmo_params["sigma8"] = self.sigma8
-        self.nslices = nslices
+
 
 
     def set_cosmo(self):
@@ -341,20 +356,16 @@ class ProcessMaps(LognormalWeakLensingSim):
         BNT_matrix : ndarray
             A (N, N) matrix
         """
-        chi_list = []
+
         normed_nz_list = []
 
         for z, nz in self.nz_list:
-            chi = ccl.comoving_radial_distance(self.cosmo, 1.0 / (1.0 + z))
             nz /= np.trapz(nz, z)
-            chi_list.append(chi)
             normed_nz_list.append(nz)
             z_arr = z
 
-        B = BNT(z_arr, chi, normed_nz_list)
-        print (np.shape(z_arr))
-        print (np.shape(chi))
-        print (np.shape(normed_nz_list[1]))
+        chi = ccl.comoving_radial_distance(self.cosmo, 1.0 / (1.0 + self.z_array))
+        B = BNT(self.z_array, chi, normed_nz_list)
         BNT_matrix = B.get_matrix()
 
         return BNT_matrix
