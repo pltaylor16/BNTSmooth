@@ -400,6 +400,34 @@ class ProcessMaps(LognormalWeakLensingSim):
         return kappa_maps_bnt
 
 
+    def inverse_bnt_transform_kappa_maps(self, kappa_maps_bnt):
+        """
+        Apply the inverse BNT transformation to a list of κ maps.
+
+        Parameters
+        ----------
+        kappa_maps_bnt : list of ndarray
+            List of BNT-transformed κ maps (length N), one per BNT bin.
+
+        Returns
+        -------
+        kappa_maps : list of ndarray
+            List of original κ maps (length N), one per tomographic bin.
+        """
+        # Get the BNT matrix (N x N)
+        B = self.get_bnt_matrix()
+
+        # Stack BNT κ maps into a (N, npix) array
+        kappa_bnt_array = np.stack(kappa_maps_bnt)  # shape (N, npix)
+
+        # Apply the inverse BNT transform
+        kappa_array = np.linalg.inv(B) @ kappa_bnt_array  # shape (N, npix)
+
+        # Convert back to list of maps
+        kappa_maps = [kappa_array[i] for i in range(kappa_array.shape[0])]
+
+        return kappa_maps
+
     def get_lensing_kernels_on_z_grid(self):
         """
         Compute lensing kernels q_i(chi) evaluated on the redshift grid z_arr 
