@@ -486,7 +486,7 @@ class ProcessMaps(LognormalWeakLensingSim):
         z_arr = self.nz_list[0][0]
         nz_normed = [nz / np.trapz(nz, z_arr) for _, nz in self.nz_list]
         B = BNT(z_arr, chi_arr, nz_normed)
-        B_matrix = B.get_matrix  # shape (nbins, nbins)
+        B_matrix = B.get_matrix()  # shape (nbins, nbins)
 
         # Apply BNT: B @ q_matrix → shape (nbins, nchis)
         q_bnt_matrix = B_matrix @ q_matrix
