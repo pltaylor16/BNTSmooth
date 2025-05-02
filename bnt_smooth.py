@@ -7,7 +7,7 @@ from BNT import BNT as BNT
 class LognormalWeakLensingSim:
     def __init__(self, z_array, nz_list, n_eff_list, sigma_eps_list,
                  baryon_feedback=3.13, seed=42, sigma8=0.8,
-                 lognormal_shift=0.0, l_max=256, nslices=50, cosmo_params=None):
+                 lognormal_shift=0.0, l_max=256, nside = 256, nslices=50, cosmo_params=None):
         """
         Initialize the lognormal weak lensing simulation.
 
@@ -54,7 +54,7 @@ class LognormalWeakLensingSim:
         self.rng = np.random.default_rng(seed)
         self.sigma8 = sigma8
         self.l_max = l_max
-        self.nside = l_max
+        self.nside = nside
         self.lognormal_shift = lognormal_shift
         self.nslices = nslices
 
