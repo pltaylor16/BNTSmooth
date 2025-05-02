@@ -386,35 +386,107 @@ class ProcessMaps(LognormalWeakLensingSim):
         return kappa_maps_bnt
 
 
-    def inverse_bnt_transform_kappa_maps(self, kappa_maps):
+    def get_lensing_kernels_on_z_grid(self):
         """
-        Apply the inverse BNT transformation to a list of κ maps.
-
-        Parameters
-        ----------
-        kappa_maps : list of ndarray
-            List of κ maps already in the BNT basis (length N), one per bin.
+        Compute lensing kernels q_i(chi) evaluated on the redshift grid z_arr 
+        from the input nz_list. Assumes all n(z)s share the same z grid.
 
         Returns
         -------
-        kappa_maps_inv : list of ndarray
-            List of κ maps after inverse BNT transformation (length N).
+        chi_arr : ndarray
+            Comoving distance array corresponding to the shared z_arr grid.
+        q_chi_list : list of ndarray
+            List of lensing kernel arrays q_i(chi) for each tomographic bin.
         """
-        # Get the BNT matrix and invert it
-        B = self.get_bnt_matrix()
-        B_inv = np.linalg.inv(B)
+        # Use z_arr from the first source bin (assumed shared by all)
+        z_arr = self.nz_list[0][0]
+        chi_arr = ccl.comoving_radial_distance(self.cosmo, 1.0 / (1.0 + z_arr))
 
-        # Stack BNT κ maps into a (N, npix) array
-        kappa_array = np.stack(kappa_maps)  # shape (N, npix)
+        q_chi_list = []
+        for z_nz, n_z in self.nz_list:
+            # Normalize n(z)
+            n_z = n_z / np.trapz(n_z, z_nz)
 
-        # Apply the inverse transform
-        kappa_inv_array = B_inv @ kappa_array  # shape (N, npix)
+            # Compute q(chi) on chi_arr grid
+            q = np.zeros_like(chi_arr)
+            for i, chi in enumerate(chi_arr):
+                a = 1.0 / (1.0 + z_arr[i])
+                chi_s = ccl.comoving_radial_distance(self.cosmo, 1.0 / (1.0 + z_nz))
+                w = np.zeros_like(z_nz)
+                mask = chi_s > chi
+                w[mask] = (chi_s[mask] - chi) / chi_s[mask]
+                c_light = 299792.458  # speed of light in km/s
+                prefac = 1.5 * (self.cosmo["Omega_m"]) * (self.cosmo["h"]**2) * (100 / c_light)**2
+                q[i] = prefac * a * chi * np.trapz(w * n_z, z_nz)
 
-        # Convert back to list of maps
-        kappa_maps_inv = [kappa_inv_array[i] for i in range(kappa_inv_array.shape[0])]
+            q_chi_list.append(q)
 
-        return kappa_maps_inv
+        return chi_arr, q_chi_list
+
+
+    def bnt_transform_lensing_kernels(self):
+        """
+        Apply the BNT transformation to the lensing kernels q_i(chi) 
+        evaluated on the original z grid shared by all n(z).
+
+        Returns
+        -------
+        q_bnt_list : list of ndarray
+            BNT-transformed lensing kernels for each bin.
+        """
+        # Get chi and original q_i(chi) values
+        chi_arr, q_chi_list = self.get_lensing_kernels_on_z_grid()
+
+        # Stack into matrix: shape (nbins, nchis)
+        q_matrix = np.stack(q_chi_list)
+
+        # Construct the BNT transformation matrix
+        z_arr = self.nz_list[0][0]
+        nz_normed = [nz / np.trapz(nz, z_arr) for _, nz in self.nz_list]
+        B = BNT(z_arr, chi_arr, nz_normed)
+        B_matrix = B.get_matrix  # shape (nbins, nbins)
+
+        # Apply BNT: B @ q_matrix → shape (nbins, nchis)
+        q_bnt_matrix = B_matrix @ q_matrix
+
+        # Split back into list of arrays
+        q_bnt_list = [q_bnt_matrix[i] for i in range(q_bnt_matrix.shape[0])]
+
+        return q_bnt_list
+
+    def compute_kernel_weighted_mean_chi(self, chi_arr, q_list):
+        """
+        Compute the average comoving distance ⟨χ⟩ for each lensing kernel q^i(χ).
+
+        Parameters
+        ----------
+        chi_arr : ndarray
+            1D array of comoving distances χ corresponding to the q(χ) values.
+        q_list : list of ndarray
+            List of q^i(χ) arrays, one per tomographic bin.
+
+        Returns
+        -------
+        mean_chis : list of float
+            Average ⟨χ⟩ value for each kernel.
+        """
+        mean_chis = []
+        for q in q_list:
+            numerator = np.trapz(chi_arr * q, chi_arr)
+            denominator = np.trapz(q, chi_arr)
+            mean_chi = numerator / denominator if denominator != 0 else 0.0
+            mean_chis.append(mean_chi)
+
+        return mean_chis
+
+
+
+
+
+
 
 		
+
+
 
 
