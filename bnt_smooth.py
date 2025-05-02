@@ -332,29 +332,32 @@ class ProcessMaps(LognormalWeakLensingSim):
         return moments_2, moments_3
 
 
-	def get_bnt_matrix(self):
-	    """
-	    Construct the BNT matrix for source tomography.
+    def get_bnt_matrix(self):
+        """
+        Construct the BNT matrix for source tomography.
 
-	    Returns
-	    -------
-	    BNT_matrix : ndarray
-	        A (N, N) matrix
-	    """
-	    chi_list = []
-	    normed_nz_list = []
+        Returns
+        -------
+        BNT_matrix : ndarray
+            A (N, N) matrix
+        """
+        chi_list = []
+        normed_nz_list = []
 
-	    for z, nz in self.nz_list:
-	        chi = ccl.comoving_radial_distance(self.cosmo, 1.0 / (1.0 + z))
-	        nz /= np.trapz(nz, z)
-	        chi_list.append(chi)
-	        normed_nz_list.append(nz)
-	        z_arr = z
+        for z, nz in self.nz_list:
+            chi = ccl.comoving_radial_distance(self.cosmo, 1.0 / (1.0 + z))
+            nz /= np.trapz(nz, z)
+            chi_list.append(chi)
+            normed_nz_list.append(nz)
+            z_arr = z
 
-	    B = BNT(z_arr, chi, normed_nz_list)
-	    BNT_matrix = B.get_matrix
+        B = BNT(z_arr, chi, normed_nz_list)
+        print (np.shape(z_arr))
+        print (np.shape(chi))
+        print (np.shape(normed_nz_list[1]))
+        BNT_matrix = B.get_matrix()
 
-	    return BNT_matrix
+        return BNT_matrix
 
 
     def bnt_transform_kappa_maps(self, kappa_maps):
@@ -485,7 +488,7 @@ class ProcessMaps(LognormalWeakLensingSim):
 
 
 
-		
+        
 
 
 
