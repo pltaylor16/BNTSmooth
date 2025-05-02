@@ -523,6 +523,25 @@ class ProcessMaps(LognormalWeakLensingSim):
         return mean_chis
 
 
+    def compute_data_vector(self, maps):
+        """
+        Compute second and third moments of κ maps and return as concatenated data vector.
+
+        Parameters
+        ----------
+        maps : list of ndarray
+            List of κ maps (signal, noise, or combined), one per tomographic bin.
+
+        Returns
+        -------
+        data_vector : ndarray
+            Concatenated array [⟨κ²⟩₁, ..., ⟨κ²⟩ₙ, ⟨κ³⟩₁, ..., ⟨κ³⟩ₙ].
+        """
+        moments_2, moments_3 = self.compute_moments(maps)
+        data_vector = np.concatenate([moments_2, moments_3])
+        return data_vector
+
+
 
 
 
