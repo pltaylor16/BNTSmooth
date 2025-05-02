@@ -357,12 +357,63 @@ class ProcessMaps(LognormalWeakLensingSim):
 	    return BNT_matrix
 
 
-	def bnt_transform_kappa_maps(self);
-		pass
+    def bnt_transform_kappa_maps(self, kappa_maps):
+        """
+        Apply the BNT transformation to a list of κ maps.
+
+        Parameters
+        ----------
+        kappa_maps : list of ndarray
+            List of input κ maps (length N), one per tomographic bin.
+
+        Returns
+        -------
+        kappa_maps_bnt : list of ndarray
+            List of BNT-transformed κ maps (length N), one per BNT bin.
+        """
+        # Get the BNT matrix (N x N)
+        B = self.get_bnt_matrix()
+
+        # Stack κ maps into a (N, npix) array
+        kappa_array = np.stack(kappa_maps)  # shape (N, npix)
+
+        # Apply the BNT transform (matrix multiplication)
+        kappa_bnt_array = B @ kappa_array  # shape (N, npix)
+
+        # Convert back to list of maps
+        kappa_maps_bnt = [kappa_bnt_array[i] for i in range(kappa_bnt_array.shape[0])]
+
+        return kappa_maps_bnt
 
 
-	def inverse_bnt_tranform_kappa_maps(self):
-		pass
+    def inverse_bnt_transform_kappa_maps(self, kappa_maps):
+        """
+        Apply the inverse BNT transformation to a list of κ maps.
+
+        Parameters
+        ----------
+        kappa_maps : list of ndarray
+            List of κ maps already in the BNT basis (length N), one per bin.
+
+        Returns
+        -------
+        kappa_maps_inv : list of ndarray
+            List of κ maps after inverse BNT transformation (length N).
+        """
+        # Get the BNT matrix and invert it
+        B = self.get_bnt_matrix()
+        B_inv = np.linalg.inv(B)
+
+        # Stack BNT κ maps into a (N, npix) array
+        kappa_array = np.stack(kappa_maps)  # shape (N, npix)
+
+        # Apply the inverse transform
+        kappa_inv_array = B_inv @ kappa_array  # shape (N, npix)
+
+        # Convert back to list of maps
+        kappa_maps_inv = [kappa_inv_array[i] for i in range(kappa_inv_array.shape[0])]
+
+        return kappa_maps_inv
 
 		
 
