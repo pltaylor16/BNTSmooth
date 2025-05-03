@@ -158,7 +158,7 @@ def main():
 
     # --- GetDist comparison ---
     param_names = ["sigma8", "lognormal_shift"]
-    g_all = MCSamples(samples=samples_all.numpy(), names=param_names, labels=param_names)
+    g_all = MCSamples(samples=samples.numpy(), names=param_names, labels=param_names)
     g_100 = MCSamples(samples=samples_100.numpy(), names=param_names, labels=param_names)
 
     gplt = plots.get_subplot_plotter()
