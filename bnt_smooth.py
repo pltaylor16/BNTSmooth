@@ -72,6 +72,7 @@ class LognormalWeakLensingSim:
 
 
 
+
     def set_cosmo(self):
         self.cosmo = ccl.Cosmology(
             Omega_c=self.cosmo_params["Omega_c"],
