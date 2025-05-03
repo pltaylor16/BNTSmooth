@@ -250,7 +250,9 @@ class LognormalWeakLensingSim:
         for q in q_list:  # Loop over tomographic bins
             kappa = np.zeros(npix)
             for i in range(self.nslices):
-                kappa += delta_chi[i] * q[i] * matter_maps[i]
+                # add also the emperical skew
+                prefactor = (1.05) ** ((2.5 - z_eff[i])/z_eff[i]) * (self.sigma8 / 0.8)
+                kappa += prefactor * delta_chi[i] * q[i] * matter_maps[i]
             kappa_maps.append(kappa)
 
         return kappa_maps
