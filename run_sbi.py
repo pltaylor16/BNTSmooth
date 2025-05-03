@@ -5,6 +5,7 @@ from bnt_smooth import ProcessMaps
 from sbi import utils as sbi_utils
 from sbi import inference as sbi_inference
 import torch
+from getdist import MCSamples, plots
 
 
 def parent_nz(z):
@@ -65,6 +66,7 @@ n_eff_list = [30.0 / nbins] * nbins
 sigma_eps_list = [0.26] * nbins
 baryon_feedback = 7.
 seed = 1234
+n_samples = 5000
 
 
 
@@ -136,7 +138,7 @@ def main():
     print("SBI training complete.\n")
 
     # --- Sample from posterior conditioned on the held-out observation ---
-    samples = posterior.sample((1000,), x=x_obs)
+    samples = posterior.sample((n_samples,), x=x_obs)
     print("Posterior sample shape:", samples.shape)
     if use_bnt == False:
         np.save("data/samples.npy", samples)
@@ -145,6 +147,28 @@ def main():
     elif use_bnt == True:
         np.save("data/samples_bnt.npy", samples)
         np.save("data/x_obs_bnt.npy", x_obs)
+
+    # SBI with only first 100 simulations
+    print("Starting SBI training with only 100 simulations...")
+    inference_100 = sbi_inference.SNPE(prior=prior, density_estimator="maf")
+    density_estimator_100 = inference_100.append_simulations(theta_train[:100], x_train[:100]).train()
+    posterior_100 = inference_100.build_posterior(density_estimator_100)
+    samples_100 = posterior_100.sample((n_samples,), x=x_obs)
+
+
+    # --- GetDist comparison ---
+    param_names = ["sigma8", "lognormal_shift"]
+    g_all = MCSamples(samples=samples_all.numpy(), names=param_names, labels=param_names)
+    g_100 = MCSamples(samples=samples_100.numpy(), names=param_names, labels=param_names)
+
+    gplt = plots.get_subplot_plotter()
+    gplt.triangle_plot([g_all, g_100], filled=True, legend_labels=["All (200)", "Subset (100)"])
+    if use_bnt == True:
+        gplt.export("data/posterior_comparison_bnt.png")
+    else:
+        gplt.export("data/posterior_comparison.png")
+
+    print("Saved triangle plot to data/posterior_comparison.png")
 
 
 
