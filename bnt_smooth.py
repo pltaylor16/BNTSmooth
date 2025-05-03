@@ -6,8 +6,8 @@ from BNT import BNT as BNT
 
 class LognormalWeakLensingSim:
     def __init__(self, z_array, nz_list, n_eff_list, sigma_eps_list,
-                 baryon_feedback=3.13, seed=42, sigma8=0.8,
-                 lognormal_shift=0.0, l_max=256, nside = 256, nslices=50, cosmo_params=None):
+                 baryon_feedback=3.13, seed=42, sigma8=0.8, Omega_m=0.3,
+                 lognormal_shift=0.0, l_max=256, nside=256, nslices=50, cosmo_params=None):
         """
         Initialize the lognormal weak lensing simulation.
 
@@ -27,14 +27,18 @@ class LognormalWeakLensingSim:
             Random seed for reproducibility.
         sigma8 : float
             Amplitude of matter fluctuations.
+        Omega_m : float
+            Total matter density parameter (Ωₘ = Ω_c + Ω_b).
         lognormal_shift : float
             Global lognormal shift parameter used by GLASS.
         l_max : int
             Maximum multipole for power spectrum generation.
+        nside : int
+            HEALPix nside parameter for map resolution.
         nslices : int
             Number of redshift slices for shell integration.
         cosmo_params : dict, optional
-            Cosmological parameters.
+            Additional cosmological parameters to override defaults.
         """
         self.z_array = z_array
         self.zmax = z_array.max()  # Set zmax automatically
@@ -53,6 +57,7 @@ class LognormalWeakLensingSim:
         self.seed = seed
         self.rng = np.random.default_rng(seed)
         self.sigma8 = sigma8
+        self.Omega_m = Omega_m
         self.l_max = l_max
         self.nside = nside
         self.lognormal_shift = lognormal_shift
@@ -69,7 +74,7 @@ class LognormalWeakLensingSim:
             "n_s": 0.96
         }
         self.cosmo_params["sigma8"] = self.sigma8
-
+        self.cosmo_params["Omega_c"] = self.Omega_m - self.cosmo_params["Omega_b"]
 
 
 

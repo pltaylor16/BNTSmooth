@@ -71,8 +71,8 @@ n_samples = 5000
 
 
 def worker(theta):
-    sigma8_val, lognormal_shift_val = float(theta[0]), float(theta[1])
-    print(f"Running simulation with sigma8 = {sigma8_val:.3f}, lognormal_shift = {lognormal_shift_val:.3f}")
+    sigma8_val, Omega_m_val = float(theta[0]), float(theta[1])
+    print(f"Running simulation with sigma8 = {sigma8_val:.3f}, Omega_m = {Omega_m_val:.3f}")
 
     sim = ProcessMaps(
         z_array=z,
@@ -81,7 +81,8 @@ def worker(theta):
         sigma_eps_list=sigma_eps_list,
         baryon_feedback=baryon_feedback,
         sigma8=sigma8_val,
-        lognormal_shift=lognormal_shift_val,
+        self.Omega_m = Omega_m_val,
+        lognormal_shift=1.,
         seed=np.random.randint(1e6),
         l_max=l_max,
         nside=nside,
@@ -101,8 +102,8 @@ def worker(theta):
 
 def main():
     # --- SBI settings ---
-    prior_min = torch.tensor([0.7, 0.8])  # sigma8, lognormal_shift
-    prior_max = torch.tensor([0.9, 1.2])
+    prior_min = torch.tensor([0.7, 0.2])  # sigma8, Omega_m
+    prior_max = torch.tensor([0.9, 0.4])
     prior = sbi_utils.BoxUniform(prior_min, prior_max)
 
     # Set up inference object
@@ -157,12 +158,12 @@ def main():
 
 
     # --- GetDist comparison ---
-    param_names = ["sigma8", "lognormal_shift"]
+    param_names = ["sigma8", "Omegam"]
     g_all = MCSamples(samples=samples.numpy(), names=param_names, labels=param_names)
     g_100 = MCSamples(samples=samples_100.numpy(), names=param_names, labels=param_names)
 
     gplt = plots.get_subplot_plotter()
-    gplt.triangle_plot([g_all, g_100], filled=True, legend_labels=["All (200)", "Subset (100)"])
+    gplt.triangle_plot([g_all, g_100], filled=True, legend_labels=["All", "Subset"])
     if use_bnt == True:
         gplt.export("data/posterior_comparison_bnt.png")
     else:
