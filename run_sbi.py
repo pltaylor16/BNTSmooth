@@ -101,8 +101,8 @@ def worker(theta):
 
 def main():
     # --- SBI settings ---
-    prior_min = torch.tensor([0.6, 0.7])  # sigma8, lognormal_shift
-    prior_max = torch.tensor([0.8, 1.3])
+    prior_min = torch.tensor([0.6, 0.8])  # sigma8, lognormal_shift
+    prior_max = torch.tensor([1.0, 1.2])
     prior = sbi_utils.BoxUniform(prior_min, prior_max)
 
     # Set up inference object
