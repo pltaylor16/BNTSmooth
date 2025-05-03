@@ -57,7 +57,6 @@ nside = 16
 nslices = 5
 nbins = 3
 n_processes = 20
-use_bnt = True
 n_simulations = 200
 
 z = np.linspace(0.01, 2.5, 500)
