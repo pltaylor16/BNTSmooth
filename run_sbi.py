@@ -175,4 +175,11 @@ def main():
 
 
 if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Run SBI with or without BNT transform.")
+    parser.add_argument("--use_bnt", action="store_true", help="Apply BNT transform if set.")
+    args = parser.parse_args()
+
+    use_bnt = args.use_bnt  # dynamically set global variable python run_sbi.py --use_bnt to run with bnt
     main()
