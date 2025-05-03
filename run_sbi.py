@@ -44,18 +44,18 @@ def make_equal_ngal_bins(nz_func, z_grid, nbins, sigma_z0=0.05):
 
 
 # --- Simulation settings ---
-l_max = 3000
-nside = 512
-nslices = 50
-nbins = 5
-n_processes = 10
+#l_max = 3000
+#nside = 512
+#nslices = 50
+#nbins = 5
+#n_processes = 10
 
 
-#l_max = 16
-#nside = 16
-#nslices = 5
-#nbins = 3
-#n_processes = 20
+l_max = 16
+nside = 16
+nslices = 5
+nbins = 3
+n_processes = 20
 
 
 z = np.linspace(0.01, 2.5, 500)
@@ -149,7 +149,7 @@ def main():
 
     # SBI with only first 100 simulations
     print("Starting SBI training with only 100 simulations...")
-    inference_100 = sbi_inference.SNPE(prior=prior, density_estimator="maf")
+    inference_100 = sbi_inference.SNPE(prior=prior, density_estimator="mdn")
     density_estimator_100 = inference_100.append_simulations(theta_train[:100], x_train[:100]).train()
     posterior_100 = inference_100.build_posterior(density_estimator_100)
     samples_100 = posterior_100.sample((n_samples,), x=x_obs)
