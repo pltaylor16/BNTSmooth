@@ -43,16 +43,29 @@ def make_equal_ngal_bins(nz_func, z_grid, nbins, sigma_z0=0.05):
 
 
 # --- Simulation settings ---
-z = np.linspace(0.01, 2.5, 500)
+#l_max = 3000
+#nside = 2048
+#nslices = 50
+#nbins = 5
+#n_processes = 2
+#use_bnt = False
+#n_simulations = 100
+
+l_max = 32
+nside = 32
+nslices = 5
 nbins = 3
+n_processes = 20
+use_bnt = True
+n_simulations = 20
+
+z = np.linspace(0.01, 2.5, 500)
 nz_list, _ = make_equal_ngal_bins(parent_nz, z, nbins=nbins)
 n_eff_list = [30.0 / nbins] * nbins
 sigma_eps_list = [0.26] * nbins
 baryon_feedback = 7.
-l_max = 32
-nside = 32
-nslices = 5
 seed = 1234
+
 
 
 def worker(theta):
@@ -74,14 +87,17 @@ def worker(theta):
     )
 
     kappa_maps = sim.generate_noisy_kappa_maps()
-    data_vector = sim.compute_data_vector(kappa_maps)
+    if use_bnt == False:
+        data_vector = sim.compute_data_vector(kappa_maps)
+    elif use_bnt == True:
+        kappa_maps = sim.bnt_transform_kappa_maps(kappa_maps)
+
 
     return data_vector
 
 
 def main():
     # --- SBI settings ---
-    n_simulations = 100
     prior_min = torch.tensor([0.6, 0.5])  # sigma8, lognormal_shift
     prior_max = torch.tensor([1.0, 1.5])
     prior = sbi_utils.BoxUniform(prior_min, prior_max)
@@ -94,23 +110,39 @@ def main():
     theta_np = theta_samples.numpy()
 
     print("Starting parallel simulations...")
-    with multiprocessing.Pool(processes=multiprocessing.cpu_count()) as pool:
+    with multiprocessing.Pool(processes=n_processes) as pool:
         x_data = pool.map(worker, theta_np)
     print("All simulations complete.\n")
 
+    # Save the data vector
+    if use_bnt == False:
+        np.save("data/data_vector.npy", data_vector)
+    elif use_bnt == True:
+        np.save("data/data_vector_bnt.npy", data_vector)
+    print("Saved data_vector to data/data_vector.npy")
+
     x_tensor = torch.tensor(x_data, dtype=torch.float32)
+
+    # --- Use the first simulated point as observation and the rest for training ---
+    x_obs = x_tensor[0]
+    theta_train = theta_samples[1:]
+    x_train = x_tensor[1:]
 
     # --- Train SBI posterior ---
     print("Starting SBI training...")
-    density_estimator = inference.append_simulations(theta_samples, x_tensor).train()
-    print ('I made it this far.....')
+    density_estimator = inference.append_simulations(theta_train, x_train).train()
     posterior = inference.build_posterior(density_estimator)
     print("SBI training complete.\n")
 
-    # --- Example inference ---
-    x_obs = x_tensor[0]  # Treat the first simulated example as observation
-    samples = posterior.sample((100,), x=x_obs)
+    # --- Sample from posterior conditioned on the held-out observation ---
+    samples = posterior.sample((1000,), x=x_obs)
     print("Posterior sample shape:", samples.shape)
+    if use_bnt == False:
+        np.save("data/data_vector.npy", data_vector)
+    elif use_bnt == True:
+        np.save("data/data_vector_bnt.npy", data_vector)
+
+
 
 
 if __name__ == "__main__":
