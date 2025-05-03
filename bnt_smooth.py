@@ -323,7 +323,7 @@ class ProcessMaps(LognormalWeakLensingSim):
 
     def compute_moments(self, maps):
         """
-        Compute the second and third moments of a list of κ maps.
+        Compute the second, third, and fourth moments of a list of κ maps.
 
         Parameters
         ----------
@@ -336,16 +336,20 @@ class ProcessMaps(LognormalWeakLensingSim):
             Second moments (⟨κ²⟩) for each tomographic bin.
         moments_3 : ndarray
             Third moments (⟨κ³⟩) for each tomographic bin.
+        moments_4 : ndarray
+            Fourth moments (⟨κ⁴⟩) for each tomographic bin.
         """
         nbins = len(maps)
         moments_2 = np.zeros(nbins)
         moments_3 = np.zeros(nbins)
+        moments_4 = np.zeros(nbins)
 
         for i, kappa in enumerate(maps):
             moments_2[i] = np.mean(kappa**2)
             moments_3[i] = np.mean(kappa**3)
+            moments_4[i] = np.mean(kappa**4)
 
-        return moments_2, moments_3
+        return moments_2, moments_3, moments_4
 
 
     def get_bnt_matrix(self):
@@ -525,7 +529,7 @@ class ProcessMaps(LognormalWeakLensingSim):
 
     def compute_data_vector(self, maps):
         """
-        Compute second and third moments of κ maps and return as concatenated data vector.
+        Compute second, third, and fourth moments of κ maps and return as concatenated data vector.
 
         Parameters
         ----------
@@ -535,10 +539,10 @@ class ProcessMaps(LognormalWeakLensingSim):
         Returns
         -------
         data_vector : ndarray
-            Concatenated array [⟨κ²⟩₁, ..., ⟨κ²⟩ₙ, ⟨κ³⟩₁, ..., ⟨κ³⟩ₙ].
+            Concatenated array [⟨κ²⟩₁, ..., ⟨κ²⟩ₙ, ⟨κ³⟩₁, ..., ⟨κ³⟩ₙ, ⟨κ⁴⟩₁, ..., ⟨κ⁴⟩ₙ].
         """
-        moments_2, moments_3 = self.compute_moments(maps)
-        data_vector = np.concatenate([moments_2, moments_3])
+        moments_2, moments_3, moments_4 = self.compute_moments(maps)
+        data_vector = np.concatenate([moments_2, moments_3, moments_4])
         return data_vector
 
 
