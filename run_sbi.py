@@ -65,7 +65,7 @@ sigma_eps_list = [0.26] * nbins
 baryon_feedback = 7.
 seed = 1234
 n_samples = 5000
-n_simulations = 200
+n_simulations = 36
 
 
 
@@ -126,7 +126,7 @@ def main():
     x_tensor = torch.tensor(x_data, dtype=torch.float32)
 
     # --- Use the first simulated point as observation and the rest for training ---
-    x_obs = x_tensor[0]
+    x_obs = torch.tensor(worker(theta=[0.8, 1.0], seed=42), dtype=torch.float32)
     theta_train = theta_samples[1:]
     x_train = x_tensor[1:]
 
@@ -149,8 +149,8 @@ def main():
 
     # SBI with only first 100 simulations
     print("Starting SBI training with only 100 simulations...")
-    inference_100 = sbi_inference.SNPE(prior=prior, density_estimator="mdn")
-    density_estimator_100 = inference_100.append_simulations(theta_train[:100], x_train[:100]).train()
+    inference_100 = sbi_inference.SNPE(prior=prior, density_estimator="maf")
+    density_estimator_100 = inference_100.append_simulations(theta_train[:18], x_train[:18]).train()
     posterior_100 = inference_100.build_posterior(density_estimator_100)
     samples_100 = posterior_100.sample((n_samples,), x=x_obs)
 
