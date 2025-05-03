@@ -91,6 +91,7 @@ def worker(theta):
         data_vector = sim.compute_data_vector(kappa_maps)
     elif use_bnt == True:
         kappa_maps = sim.bnt_transform_kappa_maps(kappa_maps)
+        data_vector = sim.compute_data_vector(kappa_maps)
 
 
     return data_vector
