@@ -116,9 +116,9 @@ def main():
 
     # Save the data vector
     if use_bnt == False:
-        np.save("data/data_vector.npy", data_vector)
+        np.save("data/data_vector.npy", x_data)
     elif use_bnt == True:
-        np.save("data/data_vector_bnt.npy", data_vector)
+        np.save("data/data_vector_bnt.npy", x_data)
     print("Saved data_vector to data/data_vector.npy")
 
     x_tensor = torch.tensor(x_data, dtype=torch.float32)
