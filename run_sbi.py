@@ -44,20 +44,19 @@ def make_equal_ngal_bins(nz_func, z_grid, nbins, sigma_z0=0.05):
 
 
 # --- Simulation settings ---
-#l_max = 3000
-#nside = 1024
-#nslices = 50
-#nbins = 5
-#n_processes = 2
-#use_bnt = False
-#n_simulations = 100
+l_max = 3000
+nside = 512
+nslices = 50
+nbins = 5
+n_processes = 10
 
-l_max = 16
-nside = 16
-nslices = 5
-nbins = 3
-n_processes = 20
-n_simulations = 200
+
+#l_max = 16
+#nside = 16
+#nslices = 5
+#nbins = 3
+#n_processes = 20
+
 
 z = np.linspace(0.01, 2.5, 500)
 nz_list, _ = make_equal_ngal_bins(parent_nz, z, nbins=nbins)
@@ -66,6 +65,7 @@ sigma_eps_list = [0.26] * nbins
 baryon_feedback = 7.
 seed = 1234
 n_samples = 5000
+n_simulations = 200
 
 
 
@@ -100,8 +100,8 @@ def worker(theta):
 
 def main():
     # --- SBI settings ---
-    prior_min = torch.tensor([0.6, 0.5])  # sigma8, lognormal_shift
-    prior_max = torch.tensor([1.0, 1.5])
+    prior_min = torch.tensor([0.6, 0.7])  # sigma8, lognormal_shift
+    prior_max = torch.tensor([0.8, 1.3])
     prior = sbi_utils.BoxUniform(prior_min, prior_max)
 
     # Set up inference object
