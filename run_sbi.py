@@ -44,20 +44,20 @@ def make_equal_ngal_bins(nz_func, z_grid, nbins, sigma_z0=0.05):
 
 # --- Simulation settings ---
 #l_max = 3000
-#nside = 2048
+#nside = 1024
 #nslices = 50
 #nbins = 5
 #n_processes = 2
 #use_bnt = False
 #n_simulations = 100
 
-l_max = 32
-nside = 32
+l_max = 16
+nside = 16
 nslices = 5
 nbins = 3
 n_processes = 20
 use_bnt = True
-n_simulations = 20
+n_simulations = 200
 
 z = np.linspace(0.01, 2.5, 500)
 nz_list, _ = make_equal_ngal_bins(parent_nz, z, nbins=nbins)
@@ -104,7 +104,7 @@ def main():
     prior = sbi_utils.BoxUniform(prior_min, prior_max)
 
     # Set up inference object
-    inference = sbi_inference.SNPE(prior=prior, density_estimator="mdn")
+    inference = sbi_inference.SNPE(prior=prior, density_estimator="maf")
 
     # --- Sample θ values ---
     theta_samples = prior.sample((n_simulations,))
