@@ -138,9 +138,13 @@ def main():
     samples = posterior.sample((1000,), x=x_obs)
     print("Posterior sample shape:", samples.shape)
     if use_bnt == False:
-        np.save("data/data_vector.npy", data_vector)
+        np.save("data/samples.npy", samples)
+        np.save("data/x_obs.npy", x_obs)
+
     elif use_bnt == True:
-        np.save("data/data_vector_bnt.npy", data_vector)
+        np.save("data/samples_bnt.npy", samples)
+        np.save("data/x_obs_bnt.npy", x_obs)
+
 
 
 
