@@ -69,8 +69,8 @@ n_samples = 5000
 
 
 def worker(theta):
-    gauss_amp, nongauss_amp = float(theta[0]), float(theta[1])
-    print(f"Running simulation with gauss_amp = {gauss_amp:.3f}, nongauss_amp = {nongauss_amp:.3f}")
+    alpha, beta = float(theta[0]), float(theta[1])
+    print(f"Running simulation with alpha = {alpha:.3f}, beta = {beta:.3f}")
 
     sim = ProcessMaps(
         z_array=z,
@@ -80,8 +80,8 @@ def worker(theta):
         baryon_feedback=baryon_feedback,
         sigma8=0.8,
         Omega_m=0.3,
-        gauss_amplitude=gauss_amp,
-        nongauss_amplitude=nongauss_amp,
+        alpha=alpha,
+        beta=beta,
         seed=np.random.randint(1e6),
         l_max=l_max,
         nside=nside,
@@ -98,7 +98,8 @@ def worker(theta):
 
 def main():
     # --- SBI settings ---
-    prior_min = torch.tensor([0.5, 0.5])  # gauss_amplitude, nongauss_amplitude
+    # --- SBI settings ---
+    prior_min = torch.tensor([0.5, 0.5])  # alpha, beta
     prior_max = torch.tensor([1.5, 1.5])
     prior = sbi_utils.BoxUniform(prior_min, prior_max)
 
@@ -124,7 +125,7 @@ def main():
     x_tensor = torch.tensor(x_data, dtype=torch.float32)
 
     # --- Use the first simulated point as observation and the rest for training ---
-    x_obs = torch.tensor(worker(theta=[1.0, 1.0]), dtype=torch.float32)
+    x_obs = torch.tensor(worker(theta=[np.e, 1.0]), dtype=torch.float32)  # use fiducial alpha=e, beta=1
     theta_train = theta_samples[1:]
     x_train = x_tensor[1:]
 
@@ -154,7 +155,7 @@ def main():
 
 
     # --- GetDist comparison ---
-    param_names = ["gauss_amp", "nongauss_amp"]
+    param_names = ["alpha", "beta"]
     g_all = MCSamples(samples=samples.numpy(), names=param_names, labels=param_names)
     g_100 = MCSamples(samples=samples_100.numpy(), names=param_names, labels=param_names)
 

@@ -4,13 +4,15 @@ import healpy as hp
 from BNT import BNT as BNT
 
 
-class TruncatedLognormalWeakLensingSim:
+import numpy as np
+
+class LognormalAlphaWeakLensingSim:
     def __init__(self, z_array, nz_list, n_eff_list, sigma_eps_list,
                  baryon_feedback=3.13, seed=42, sigma8=0.8, Omega_m=0.3,
-                 gauss_amplitude=1.0, nongauss_amplitude=1.0,
+                 alpha=np.e, beta=1.0,
                  l_max=256, nside=256, nslices=50, cosmo_params=None):
         """
-        Initialize the truncated lognormal weak lensing simulation.
+        Initialize the lognormal weak lensing simulation with exponential mapping parameters.
 
         Parameters
         ----------
@@ -30,10 +32,10 @@ class TruncatedLognormalWeakLensingSim:
             Amplitude of matter fluctuations.
         Omega_m : float
             Total matter density parameter (Ωₘ = Ω_c + Ω_b).
-        gauss_amplitude : float
-            Amplitude scaling for the Gaussian component of the density field.
-        nongauss_amplitude : float
-            Amplitude scaling for the non-Gaussian component of the density field.
+        alpha : float
+            Base of the exponential in the transformation α^{β x} - 1.
+        beta : float
+            Power-law index scaling the Gaussian field before exponentiation.
         l_max : int
             Maximum multipole for power spectrum generation.
         nside : int
@@ -61,8 +63,8 @@ class TruncatedLognormalWeakLensingSim:
         self.rng = np.random.default_rng(seed)
         self.sigma8 = sigma8
         self.Omega_m = Omega_m
-        self.gauss_amplitude = gauss_amplitude
-        self.nongauss_amplitude = nongauss_amplitude
+        self.alpha = alpha
+        self.beta = beta
         self.l_max = l_max
         self.nside = nside
         self.nslices = nslices
@@ -136,11 +138,13 @@ class TruncatedLognormalWeakLensingSim:
 
     def generate_matter_fields_from_scratch(self):
         """
-        Generate truncated lognormal random fields for matter density shells from scratch.
+        Generate lognormal random fields for matter density shells using the
+        transformation delta_ln = alpha^(beta * delta_g) - 1.
+
         Returns
         -------
         maps : list of ndarray
-            List of HEALPix truncated lognormal κ maps for each redshift shell.
+            List of HEALPix lognormal δ maps for each redshift shell.
         """
         cls = self.compute_matter_cls()
         nside = self.nside
@@ -155,8 +159,8 @@ class TruncatedLognormalWeakLensingSim:
             np.random.seed(self.seed)
             delta_g = hp.synfast(full_cl, nside=nside)
 
-            nongauss_term = 0.5 * delta_g ** 2. + 1/6. * delta_g ** 3.
-            delta_ln = self.gauss_amplitude * delta_g + self.nongauss_amplitude * nongauss_term
+            # Apply the lognormal transformation
+            delta_ln = self.alpha ** (self.beta * delta_g) - 1
 
             maps.append(delta_ln)
 
