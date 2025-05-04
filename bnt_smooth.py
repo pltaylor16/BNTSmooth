@@ -4,12 +4,13 @@ import healpy as hp
 from BNT import BNT as BNT
 
 
-class LognormalWeakLensingSim:
+class TruncatedLognormalWeakLensingSim:
     def __init__(self, z_array, nz_list, n_eff_list, sigma_eps_list,
                  baryon_feedback=3.13, seed=42, sigma8=0.8, Omega_m=0.3,
-                 lognormal_shift=0.0, l_max=256, nside=256, nslices=50, cosmo_params=None):
+                 gauss_amplitude=1.0, nongauss_amplitude=1.0,
+                 l_max=256, nside=256, nslices=50, cosmo_params=None):
         """
-        Initialize the lognormal weak lensing simulation.
+        Initialize the truncated lognormal weak lensing simulation.
 
         Parameters
         ----------
@@ -29,8 +30,10 @@ class LognormalWeakLensingSim:
             Amplitude of matter fluctuations.
         Omega_m : float
             Total matter density parameter (Ωₘ = Ω_c + Ω_b).
-        lognormal_shift : float
-            Global lognormal shift parameter used by GLASS.
+        gauss_amplitude : float
+            Amplitude scaling for the Gaussian component of the density field.
+        nongauss_amplitude : float
+            Amplitude scaling for the non-Gaussian component of the density field.
         l_max : int
             Maximum multipole for power spectrum generation.
         nside : int
@@ -58,9 +61,10 @@ class LognormalWeakLensingSim:
         self.rng = np.random.default_rng(seed)
         self.sigma8 = sigma8
         self.Omega_m = Omega_m
+        self.gauss_amplitude = gauss_amplitude
+        self.nongauss_amplitude = nongauss_amplitude
         self.l_max = l_max
         self.nside = nside
-        self.lognormal_shift = lognormal_shift
         self.nslices = nslices
 
         self.nbins = len(self.nz_list)
@@ -132,13 +136,13 @@ class LognormalWeakLensingSim:
 
     def generate_matter_fields_from_scratch(self):
         """
-        Generate lognormal random fields for matter density shells from scratch,
+        Generate truncated lognormal random fields for matter density shells from scratch,
         applying a constant shift to the Gaussian field before exponentiation.
 
         Returns
         -------
         maps : list of ndarray
-            List of HEALPix lognormal κ maps for each redshift shell.
+            List of HEALPix truncated lognormal κ maps for each redshift shell.
         """
         cls = self.compute_matter_cls()
         nside = self.nside
@@ -153,9 +157,8 @@ class LognormalWeakLensingSim:
             np.random.seed(self.seed)
             delta_g = hp.synfast(full_cl, nside=nside)
 
-            # Apply lognormal transformation 
-            # glass eqn 12 in https://arxiv.org/pdf/2302.01942
-            delta_ln = self.lognormal_shift * (np.exp(delta_g) - 1)
+            nongauss_term = 0.5 * delta_g ** 2. + 1/6. * delta_g ** 3.
+            delta_ln = self.gauss_amplitude * delta_g + self.nongauss_amplitude * nongauss_term
 
             maps.append(delta_ln)
 
@@ -250,9 +253,7 @@ class LognormalWeakLensingSim:
         for q in q_list:  # Loop over tomographic bins
             kappa = np.zeros(npix)
             for i in range(self.nslices):
-                # add also the emperical skew
-                prefactor = (1.05) ** ((2.5 - z_eff[i])/z_eff[i]) * (self.sigma8 / 0.8)
-                kappa += prefactor * delta_chi[i] * q[i] * matter_maps[i]
+                kappa += delta_chi[i] * q[i] * matter_maps[i]
             kappa_maps.append(kappa)
 
         return kappa_maps
@@ -329,9 +330,9 @@ class ProcessMaps(LognormalWeakLensingSim):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def compute_moments(self, maps):
+    def compute_data_vector(self, maps):
         """
-        Compute the second, third, and fourth moments of a list of κ maps.
+        Compute ⟨κ²⟩ and ⟨κ³⟩ for each tomographic bin and return as concatenated data vector.
 
         Parameters
         ----------
@@ -340,24 +341,12 @@ class ProcessMaps(LognormalWeakLensingSim):
 
         Returns
         -------
-        moments_2 : ndarray
-            Second moments (⟨κ²⟩) for each tomographic bin.
-        moments_3 : ndarray
-            Third moments (⟨κ³⟩) for each tomographic bin.
-        moments_4 : ndarray
-            Fourth moments (⟨κ⁴⟩) for each tomographic bin.
+        data_vector : ndarray
+            Concatenated array [⟨κ²⟩₁, ..., ⟨κ²⟩ₙ, ⟨κ³⟩₁, ..., ⟨κ³⟩ₙ].
         """
-        nbins = len(maps)
-        moments_2 = np.zeros(nbins)
-        moments_3 = np.zeros(nbins)
-        moments_4 = np.zeros(nbins)
-
-        for i, kappa in enumerate(maps):
-            moments_2[i] = np.mean(kappa**2)
-            moments_3[i] = np.mean(kappa**3)
-            moments_4[i] = np.mean(kappa**4)
-
-        return moments_2, moments_3, moments_4
+        kappa2 = [np.mean(k**2) for k in maps]
+        kappa3 = [np.mean(k**3) for k in maps]
+        return np.concatenate([kappa2, kappa3])
 
 
     def get_bnt_matrix(self):
@@ -537,7 +526,7 @@ class ProcessMaps(LognormalWeakLensingSim):
 
     def compute_data_vector(self, maps):
         """
-        Compute second, third, and fourth moments of κ maps and return as concatenated data vector.
+        Compute second and third moments of κ maps and return as concatenated data vector.
 
         Parameters
         ----------
@@ -547,10 +536,11 @@ class ProcessMaps(LognormalWeakLensingSim):
         Returns
         -------
         data_vector : ndarray
-            Concatenated array [⟨κ²⟩₁, ..., ⟨κ²⟩ₙ, ⟨κ³⟩₁, ..., ⟨κ³⟩ₙ, ⟨κ⁴⟩₁, ..., ⟨κ⁴⟩ₙ].
+            Concatenated array [⟨κ²⟩₁, ..., ⟨κ²⟩ₙ, ⟨κ³⟩₁, ..., ⟨κ³⟩ₙ].
         """
-        moments_2, moments_3, moments_4 = self.compute_moments(maps)
-        data_vector = np.concatenate([moments_2, moments_3, moments_4])
+        moments_2 = [np.mean(k**2) for k in maps]
+        moments_3 = [np.mean(k**3) for k in maps]
+        data_vector = np.concatenate([moments_2, moments_3])
         return data_vector
 
 
