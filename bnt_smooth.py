@@ -543,13 +543,78 @@ class ProcessMaps(TruncatedLognormalWeakLensingSim):
 
 
 
+    def smooth_kappa_maps_by_physical_scale(self, physical_scale_mpc, mean_chis, kappa_maps):
+        """
+        Smooth κ maps by converting a physical scale (in Mpc) to an angular scale using mean comoving distances.
+
+        Parameters
+        ----------
+        physical_scale_mpc : float
+            Target physical smoothing scale in Mpc.
+        mean_chis : list of float
+            Mean comoving distances ⟨χ⟩ for each tomographic bin in Mpc.
+        kappa_maps : list of ndarray
+            Input κ maps (one per tomographic bin) to be smoothed.
+
+        Returns
+        -------
+        smoothed_maps : list of ndarray
+            Smoothed κ maps (one per tomographic bin).
+        """
+        smoothed_maps = []
+        arcmin_per_rad = (180.0 / np.pi) * 60.0
+
+        print("Smoothing scales per bin (arcmin):")
+        for i, (kappa, chi) in enumerate(zip(kappa_maps, mean_chis)):
+            theta_rad = physical_scale_mpc / chi  # angular size in radians
+            theta_arcmin = theta_rad * arcmin_per_rad
+            print(f"  Bin {i + 1}: {theta_arcmin:.2f} arcmin")
+
+            smoothed = hp.smoothing(kappa, fwhm=theta_rad, verbose=False)
+            smoothed_maps.append(smoothed)
+
+        return smoothed_maps
 
 
+    def smooth_kappa_map_by_single_physical_scale(self, physical_scale_mpc, z_arr, nz_arr, kappa_map):
+        """
+        Smooth a single κ map using a physical scale and a lensing kernel computed from n(z).
 
+        Parameters
+        ----------
+        physical_scale_mpc : float
+            Physical smoothing scale in Mpc.
+        z_arr : ndarray
+            Redshift array corresponding to the n(z).
+        nz_arr : ndarray
+            Normalized redshift distribution n(z) for the source bin.
+        kappa_map : ndarray
+            Input κ map to be smoothed.
 
+        Returns
+        -------
+        smoothed_map : ndarray
+            Smoothed κ map.
+        """
+        nz_arr = nz_arr / np.trapz(nz_arr, z_arr)
+        chi_arr = ccl.comoving_radial_distance(self.cosmo, 1.0 / (1.0 + z_arr))
 
+        # Compute lensing kernel q(chi)
+        q = np.zeros_like(chi_arr)
+        for i, chi in enumerate(chi_arr):
+            chi_s = ccl.comoving_radial_distance(self.cosmo, 1.0 / (1.0 + z_arr))
+            mask = chi_s > chi
+            integrand = np.zeros_like(chi_s)
+            integrand[mask] = (chi_s[mask] - chi) / chi_s[mask] * nz_arr[mask]
+            q[i] = chi[i] * np.trapz(integrand, z_arr)
 
+        mean_chi = np.trapz(chi_arr * q, chi_arr) / np.trapz(q, chi_arr)
+        theta_rad = physical_scale_mpc / mean_chi
+        theta_arcmin = theta_rad * (180.0 / np.pi) * 60.0
+        print(f"Smoothing scale: {theta_arcmin:.2f} arcmin (mean χ = {mean_chi:.2f} Mpc)")
 
+        smoothed_map = hp.smoothing(kappa_map, fwhm=theta_rad, verbose=False)
+        return smoothed_map
 
 
 
