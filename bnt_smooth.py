@@ -322,7 +322,7 @@ class LognormalAlphaWeakLensingSim:
         return noisy_kappa_maps
 
 
-class ProcessMaps(TruncatedLognormalWeakLensingSim):
+class ProcessMaps(LognormalAlphaWeakLensingSim):
     """
     Subclass for processing κ maps after simulation.
     Inherits all setup and map generation functionality from LognormalWeakLensingSim.
