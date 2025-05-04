@@ -136,9 +136,7 @@ class TruncatedLognormalWeakLensingSim:
 
     def generate_matter_fields_from_scratch(self):
         """
-        Generate truncated lognormal random fields for matter density shells from scratch,
-        applying a constant shift to the Gaussian field before exponentiation.
-
+        Generate truncated lognormal random fields for matter density shells from scratch.
         Returns
         -------
         maps : list of ndarray
@@ -542,6 +540,13 @@ class ProcessMaps(TruncatedLognormalWeakLensingSim):
         moments_3 = [np.mean(k**3) for k in maps]
         data_vector = np.concatenate([moments_2, moments_3])
         return data_vector
+
+
+
+
+
+
+
 
 
 
