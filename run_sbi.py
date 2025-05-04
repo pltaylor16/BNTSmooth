@@ -128,7 +128,7 @@ def main():
     x_tensor = torch.tensor(x_data, dtype=torch.float32)
 
     # --- Use the first simulated point as observation and the rest for training ---
-    x_obs = torch.tensor(worker(theta=[0.8, 1.0]), dtype=torch.float32)
+    x_obs = torch.tensor(worker(theta=[0.8, 0.3]), dtype=torch.float32)
     theta_train = theta_samples[1:]
     x_train = x_tensor[1:]
 
