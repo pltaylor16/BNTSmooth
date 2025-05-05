@@ -182,7 +182,7 @@ class WeakLensingSim:
         for x in maps:
 
             z = alpha * x
-            y = z + beta**2 * (
+            y = z + beta * (
                 (1/2.0) * x**2 +
                 (1/6.0) * x**3 +
                 (1/24.0) * x**4 +

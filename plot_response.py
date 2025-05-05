@@ -78,7 +78,7 @@ print("Saved alpha plot to data/alpha.png")
 
 # Run for two beta values (alpha fixed)
 beta_data = {}
-for beta in [0.9, 1.1]:
+for beta in [0.5, 1.5]:
     sim = ProcessMaps(alpha=1.0, beta=beta, **common_kwargs)
     maps = sim.generate_noisy_kappa_maps()
     dv = sim.compute_data_vector(maps)
