@@ -96,6 +96,7 @@ class WeakLensingSim:
         return 0.
 
 
+
     def compute_matter_cls(self):
         """
         Compute auto-spectra C_ell^{δδ} for narrow redshift slices using PyCCL.
@@ -552,25 +553,6 @@ class ProcessMaps(WeakLensingSim):
 
         return mean_chis
 
-
-    def compute_data_vector(self, maps):
-        """
-        Compute second and third moments of κ maps and return as concatenated data vector.
-
-        Parameters
-        ----------
-        maps : list of ndarray
-            List of κ maps (signal, noise, or combined), one per tomographic bin.
-
-        Returns
-        -------
-        data_vector : ndarray
-            Concatenated array [⟨κ²⟩₁, ..., ⟨κ²⟩ₙ, ⟨κ³⟩₁, ..., ⟨κ³⟩ₙ].
-        """
-        moments_2 = [np.mean(k**2) for k in maps]
-        moments_3 = [np.mean(k**3) for k in maps]
-        data_vector = np.concatenate([moments_2, moments_3])
-        return data_vector
 
 
 
