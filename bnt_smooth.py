@@ -341,7 +341,7 @@ class WeakLensingSim:
         self.set_cosmo()
 
         gauss_matter_maps = self.generate_gauss_matter_fields_from_scratch()
-        matter_maps = self.make_skewed_delta_maps()
+        matter_maps = self.make_skewed_delta_maps(gauss_matter_maps)
         kappa_maps = self.compute_kappa_maps(matter_maps)
         noise_maps = self.generate_noise_only_kappa_maps()
 
