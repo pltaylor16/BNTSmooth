@@ -84,7 +84,7 @@ class WeakLensingSim:
             Omega_b=self.cosmo_params["Omega_b"],
             h=self.cosmo_params["h"],
             n_s=self.cosmo_params["n_s"],
-            sigma8=self.sigma8,
+            sigma8=self.cosmo_params["sigma8"] ,
             matter_power_spectrum="camb",
             extra_parameters = {"camb": {"halofit_version": "mead2020_feedback",
                              "HMCode_logT_AGN": self.baryon_feedback}},
