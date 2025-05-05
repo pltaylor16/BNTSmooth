@@ -9,7 +9,7 @@ import numpy as np
 
 class WeakLensingSim:
     def __init__(self, z_array, nz_list, n_eff_list, sigma_eps_list,
-                 baryon_feedback=7, seed=42,
+                 baryon_feedback=7., seed=42,
                  alpha=1.0, beta=1.0,
                  l_max=256, nside=256, nslices=20, cosmo_params=None):
         """
@@ -178,8 +178,6 @@ class WeakLensingSim:
         beta = self.beta
         alpha = self.alpha
         transformed_maps = []
-        maps_fixed = 
-        maps_current = 
 
         for x in maps:
 
