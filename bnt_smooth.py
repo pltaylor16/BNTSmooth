@@ -6,11 +6,11 @@ from BNT import BNT as BNT
 
 import numpy as np
 
-class LognormalAlphaWeakLensingSim:
+class WeakLensingSim:
     def __init__(self, z_array, nz_list, n_eff_list, sigma_eps_list,
                  baryon_feedback=3.13, seed=42, sigma8=0.8, Omega_m=0.3,
-                 alpha=np.e, beta=1.0,
-                 l_max=256, nside=256, nslices=50, cosmo_params=None):
+                 alpha=1.,
+                 l_max=256, nside=256, nslices=20, cosmo_params=None):
         """
         Initialize the lognormal weak lensing simulation with exponential mapping parameters.
 
@@ -34,8 +34,6 @@ class LognormalAlphaWeakLensingSim:
             Total matter density parameter (Ωₘ = Ω_c + Ω_b).
         alpha : float
             Base of the exponential in the transformation α^{β x} - 1.
-        beta : float
-            Power-law index scaling the Gaussian field before exponentiation.
         l_max : int
             Maximum multipole for power spectrum generation.
         nside : int
@@ -64,7 +62,6 @@ class LognormalAlphaWeakLensingSim:
         self.sigma8 = sigma8
         self.Omega_m = Omega_m
         self.alpha = alpha
-        self.beta = beta
         self.l_max = l_max
         self.nside = nside
         self.nslices = nslices
@@ -97,7 +94,6 @@ class LognormalAlphaWeakLensingSim:
         )
 
         return 0.
-
 
 
     def compute_matter_cls(self):
@@ -135,16 +131,14 @@ class LognormalAlphaWeakLensingSim:
         return gls
 
 
-
-    def generate_matter_fields_from_scratch(self):
+    def generate_gauss_matter_fields_from_scratch(self):
         """
-        Generate lognormal random fields for matter density shells using the
-        transformation delta_ln = alpha^(beta * delta_g) - 1.
+        Generate gauss random fields for matter density shells.
 
         Returns
         -------
         maps : list of ndarray
-            List of HEALPix lognormal δ maps for each redshift shell.
+            List of HEALPix gauss δ maps for each redshift shell.
         """
         cls = self.compute_matter_cls()
         nside = self.nside
@@ -159,12 +153,43 @@ class LognormalAlphaWeakLensingSim:
             np.random.seed(self.seed)
             delta_g = hp.synfast(full_cl, nside=nside)
 
-            # Apply the lognormal transformation
-            delta_ln = self.alpha ** (self.beta * delta_g) - 1
-
-            maps.append(delta_ln)
+            maps.append(delta_g)
 
         return maps
+
+
+    def make_skewed_delta_maps(self, gauss_maps):
+        """
+        Apply a nonlinear skewing transformation to Gaussian maps and rescale 
+        to match the original variance and zero mean.
+
+        Transformation:
+            y = x + α * (0.5 x² + 1/6 x³ + 1/24 x⁴ + 1/120 x⁵ + 1/720 x⁶)
+
+        Uses self.alpha from the class instance.
+
+        Parameters
+        ----------
+        gauss_maps : list of ndarray
+            List of Gaussian δ fields, one per redshift shell.
+
+        Returns
+        -------
+        transformed_maps : list of ndarray
+            List of transformed, rescaled, and mean-centered δ fields.
+        """
+        alpha = self.alpha
+        transformed_maps = []
+
+        for x in gauss_maps:
+            y = x + alpha * (0.5 * x**2 + (1/6.0) * x**3 + (1/24.0) * x**4 +
+                             (1/120.0) * x**5 + (1/720.0) * x**6)
+            var_x = np.var(x)
+            var_y = np.var(y)
+            y *= np.sqrt(var_x / var_y)  # rescale to match original variance
+            transformed_maps.append(y)
+
+        return transformed_maps
 
 
 
@@ -314,7 +339,8 @@ class LognormalAlphaWeakLensingSim:
         """
         self.set_cosmo()
 
-        matter_maps = self.generate_matter_fields_from_scratch()
+        gauss_matter_maps = self.generate_gauss_matter_fields_from_scratch()
+        matter_maps = self.make_skewed_delta_maps(gauss_matter_maps)
         kappa_maps = self.compute_kappa_maps(matter_maps)
         noise_maps = self.generate_noise_only_kappa_maps()
 
@@ -323,7 +349,7 @@ class LognormalAlphaWeakLensingSim:
         return noisy_kappa_maps
 
 
-class ProcessMaps(LognormalAlphaWeakLensingSim):
+class ProcessMaps(WeakLensingSim):
     """
     Subclass for processing κ maps after simulation.
     Inherits all setup and map generation functionality from LognormalWeakLensingSim.

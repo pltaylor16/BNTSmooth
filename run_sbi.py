@@ -47,7 +47,7 @@ def make_equal_ngal_bins(nz_func, z_grid, nbins, sigma_z0=0.05):
 n_simulations = 500
 l_max = 1500
 nside = 512
-nslices = 50
+nslices = 20
 nbins = 5
 n_processes = 10
 
@@ -69,8 +69,8 @@ n_samples = 5000
 
 
 def worker(theta):
-    alpha, beta = float(theta[0]), float(theta[1])
-    print(f"Running simulation with alpha = {alpha:.3f}, beta = {beta:.3f}")
+    sigma8, alpha = float(theta[0]), float(theta[1])
+    print(f"Running simulation with sigma8 = {sigma8:.3f}, alpha = {alpha:.3f}")
 
     sim = ProcessMaps(
         z_array=z,
@@ -78,10 +78,9 @@ def worker(theta):
         n_eff_list=n_eff_list,
         sigma_eps_list=sigma_eps_list,
         baryon_feedback=baryon_feedback,
-        sigma8=0.8,
+        sigma8=sigma8,
         Omega_m=0.3,
         alpha=alpha,
-        beta=beta,
         seed=np.random.randint(1e6),
         l_max=l_max,
         nside=nside,
@@ -95,18 +94,14 @@ def worker(theta):
     return data_vector
 
 
-
 def main():
     # --- SBI settings ---
-    # --- SBI settings ---
-    prior_min = torch.tensor([np.e-1., 0.5])  # alpha, beta
-    prior_max = torch.tensor([np.e+1., 1.5])
+    prior_min = torch.tensor([0.5, 0.5])  # sigma8, alpha
+    prior_max = torch.tensor([1.2, 1.5])
     prior = sbi_utils.BoxUniform(prior_min, prior_max)
 
-    # Set up inference object
     inference = sbi_inference.SNPE(prior=prior, density_estimator="maf")
 
-    # --- Sample θ values ---
     theta_samples = prior.sample((n_simulations,))
     theta_np = theta_samples.numpy()
 
@@ -115,69 +110,48 @@ def main():
         x_data = pool.map(worker, theta_np)
     print("All simulations complete.\n")
 
-    # Save the data vector
-    if use_bnt == False:
-        np.save("data/data_vector.npy", x_data)
-    elif use_bnt == True:
+    if use_bnt:
         np.save("data/data_vector_bnt.npy", x_data)
-    print("Saved data_vector to data/data_vector.npy")
+    else:
+        np.save("data/data_vector.npy", x_data)
 
     x_tensor = torch.tensor(x_data, dtype=torch.float32)
 
-    # --- Use the first simulated point as observation and the rest for training ---
-    x_obs = torch.tensor(worker(theta=[np.e, 1.0]), dtype=torch.float32)  # use fiducial alpha=e, beta=1
+    # Use fiducial point for observation
+    x_obs = torch.tensor(worker(theta=[0.8, 1.0]), dtype=torch.float32)
     theta_train = theta_samples[1:]
     x_train = x_tensor[1:]
 
-    # --- Train SBI posterior ---
     print("Starting SBI training...")
     density_estimator = inference.append_simulations(theta_train, x_train).train()
     posterior = inference.build_posterior(density_estimator)
     print("SBI training complete.\n")
 
-    # --- Sample from posterior conditioned on the held-out observation ---
     samples = posterior.sample((n_samples,), x=x_obs)
-    print("Posterior sample shape:", samples.shape)
-    if use_bnt == False:
+    if use_bnt:
+        np.save("data/samples_bnt.npy", samples)
+        np.save("data/x_obs_bnt.npy", x_obs)
+    else:
         np.save("data/samples.npy", samples)
         np.save("data/x_obs.npy", x_obs)
 
-    elif use_bnt == True:
-        np.save("data/samples_bnt.npy", samples)
-        np.save("data/x_obs_bnt.npy", x_obs)
-
-    # SBI with only first 100 simulations
+    # Subset training
     print("Starting SBI training with only 100 simulations...")
     inference_100 = sbi_inference.SNPE(prior=prior, density_estimator="maf")
     density_estimator_100 = inference_100.append_simulations(theta_train[:250], x_train[:250]).train()
     posterior_100 = inference_100.build_posterior(density_estimator_100)
     samples_100 = posterior_100.sample((n_samples,), x=x_obs)
 
-
-    # --- GetDist comparison ---
-    param_names = ["alpha", "beta"]
+    # GetDist plot
+    param_names = ["sigma8", "alpha"]
     g_all = MCSamples(samples=samples.numpy(), names=param_names, labels=param_names)
     g_100 = MCSamples(samples=samples_100.numpy(), names=param_names, labels=param_names)
 
     gplt = plots.get_subplot_plotter()
     gplt.triangle_plot([g_all, g_100], filled=True, legend_labels=["All", "Subset"])
-    if use_bnt == True:
+    if use_bnt:
         gplt.export("data/posterior_comparison_bnt.png")
     else:
         gplt.export("data/posterior_comparison.png")
 
     print("Saved triangle plot to data/posterior_comparison.png")
-
-
-
-
-
-if __name__ == "__main__":
-    import argparse
-
-    parser = argparse.ArgumentParser(description="Run SBI with or without BNT transform.")
-    parser.add_argument("--use_bnt", action="store_true", help="Apply BNT transform if set.")
-    args = parser.parse_args()
-
-    use_bnt = args.use_bnt  # dynamically set global variable python run_sbi.py --use_bnt to run with bnt
-    main()
