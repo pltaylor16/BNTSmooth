@@ -167,6 +167,7 @@ class LognormalAlphaWeakLensingSim:
         return maps
 
 
+
     def get_shell_zchi(self):
         """
         Compute effective redshift, comoving distance, and shell width for each redshift shell.
