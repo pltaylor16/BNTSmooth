@@ -23,7 +23,7 @@ def make_equal_ngal_bins(nz_func, z_grid, nbins, sigma_z0=0.05):
     cdf = np.cumsum(nz_parent)
     cdf /= cdf[-1]
     inv_cdf = interp1d(np.concatenate([[0], cdf, [1]]),
-                       np.concatenate([[z_grid[0]], z, [z_grid[-1]]]))
+                       np.concatenate([[z_grid[0]], z_grid, [z_grid[-1]]]))
     edges = inv_cdf(np.linspace(0, 1, nbins + 1))
 
     nz_bins = []
@@ -50,14 +50,7 @@ nside = 512
 nslices = 20
 nbins = 5
 n_processes = 10
-
-#n_simulations = 36
-#l_max = 16
-#nside = 16
-#nslices = 5
-#nbins = 3
-#n_processes = 20
-
+n_samples = 5000
 
 z = np.linspace(0.01, 2.5, 500)
 nz_list, _ = make_equal_ngal_bins(parent_nz, z, nbins=nbins)
@@ -65,12 +58,11 @@ n_eff_list = [30.0 / nbins] * nbins
 sigma_eps_list = [0.26] * nbins
 baryon_feedback = 7.
 seed = 1234
-n_samples = 5000
 
 
 def worker(theta):
-    sigma8, alpha = float(theta[0]), float(theta[1])
-    print(f"Running simulation with sigma8 = {sigma8:.3f}, alpha = {alpha:.3f}")
+    alpha, beta = float(theta[0]), float(theta[1])
+    print(f"Running simulation with alpha = {alpha:.3f}, beta = {beta:.3f}")
 
     sim = ProcessMaps(
         z_array=z,
@@ -78,8 +70,8 @@ def worker(theta):
         n_eff_list=n_eff_list,
         sigma_eps_list=sigma_eps_list,
         baryon_feedback=baryon_feedback,
-        sigma8=sigma8,
         alpha=alpha,
+        beta=beta,
         seed=np.random.randint(1e6),
         l_max=l_max,
         nside=nside,
@@ -95,8 +87,8 @@ def worker(theta):
 
 def main():
     # --- SBI settings ---
-    prior_min = torch.tensor([0.5, 0.5])  # sigma8, alpha
-    prior_max = torch.tensor([1.2, 1.5])
+    prior_min = torch.tensor([0.5, 0.5])  # alpha, beta
+    prior_max = torch.tensor([1.5, 1.5])
     prior = sbi_utils.BoxUniform(prior_min, prior_max)
 
     inference = sbi_inference.SNPE(prior=prior, density_estimator="maf")
@@ -117,7 +109,7 @@ def main():
     x_tensor = torch.tensor(x_data, dtype=torch.float32)
 
     # Use fiducial point for observation
-    x_obs = torch.tensor(worker(theta=[0.8, 1.0]), dtype=torch.float32)
+    x_obs = torch.tensor(worker(theta=[1.0, 1.0]), dtype=torch.float32)
     theta_train = theta_samples[1:]
     x_train = x_tensor[1:]
 
@@ -142,7 +134,7 @@ def main():
     samples_100 = posterior_100.sample((n_samples,), x=x_obs)
 
     # GetDist plot
-    param_names = ["sigma8", "alpha"]
+    param_names = ["alpha", "beta"]
     g_all = MCSamples(samples=samples.numpy(), names=param_names, labels=param_names)
     g_100 = MCSamples(samples=samples_100.numpy(), names=param_names, labels=param_names)
 
@@ -156,11 +148,10 @@ def main():
     print("Saved triangle plot to data/posterior_comparison.png")
 
 
-
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="Run SBI with or without BNT transform.")
     parser.add_argument("--use_bnt", action="store_true", help="Apply BNT transform if set.")
     args = parser.parse_args()
-    use_bnt = args.use_bnt  # dynamically set global variable python run_sbi.py --use_bnt to run with bnt
+    use_bnt = args.use_bnt
     main()

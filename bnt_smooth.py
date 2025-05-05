@@ -6,10 +6,11 @@ from BNT import BNT as BNT
 
 import numpy as np
 
+
 class WeakLensingSim:
     def __init__(self, z_array, nz_list, n_eff_list, sigma_eps_list,
-                 baryon_feedback=3.13, seed=42, sigma8=0.8,
-                 alpha=1.,
+                 baryon_feedback=7, seed=42,
+                 alpha=1., beta=1.0,
                  l_max=256, nside=256, nslices=20, cosmo_params=None):
         """
         Initialize the lognormal weak lensing simulation with exponential mapping parameters.
@@ -28,10 +29,10 @@ class WeakLensingSim:
             HMCode baryonic feedback strength (log10 A_baryon).
         seed : int
             Random seed for reproducibility.
-        sigma8 : float
-            Amplitude of matter fluctuations.
         alpha : float
-            Base of the exponential in the transformation α^{β x} - 1.
+            strength of gaussian signal
+        beta : float
+            non-gaussianity parameter
         l_max : int
             Maximum multipole for power spectrum generation.
         nside : int
@@ -42,9 +43,8 @@ class WeakLensingSim:
             Additional cosmological parameters to override defaults.
         """
         self.z_array = z_array
-        self.zmax = z_array.max()  # Set zmax automatically
+        self.zmax = z_array.max()
 
-        # Interpolate all n(z) onto shared grid
         from scipy.interpolate import interp1d
         self.nz_list = []
         for z_i, nz_i in nz_list:
@@ -57,8 +57,8 @@ class WeakLensingSim:
         self.baryon_feedback = baryon_feedback
         self.seed = seed
         self.rng = np.random.default_rng(seed)
-        self.sigma8 = sigma8
         self.alpha = alpha
+        self.beta = beta
         self.l_max = l_max
         self.nside = nside
         self.nslices = nslices
@@ -73,7 +73,7 @@ class WeakLensingSim:
             "h": 0.67,
             "n_s": 0.96
         }
-        self.cosmo_params["sigma8"] = self.sigma8
+        self.cosmo_params["sigma8"] = 0.8
 
 
 
@@ -130,115 +130,66 @@ class WeakLensingSim:
 
 
 
-    def generate_gauss_matter_fields_with_fixed_sigma8(self):
+    def generate_gauss_matter_fields_from_scratch(self):
         """
-        Generate Gaussian matter maps for each redshift shell using both:
-        - the current cosmology (self.sigma8)
-        - a fixed cosmology with sigma8 = 0.8
-        with identical random seeds for phase-matching.
+        Generate gauss random fields for matter density shells.
 
         Returns
         -------
-        maps_current : list of ndarray
-            Gaussian δ maps using self.sigma8.
-        maps_fixed : list of ndarray
-            Gaussian δ maps using sigma8 = 0.8.
+        maps : list of ndarray
+            List of HEALPix gauss δ maps for each redshift shell.
         """
+        cls = self.compute_matter_cls()
         nside = self.nside
 
-        # Use current cosmology Cls
-        cls_current = self.compute_matter_cls()
+        maps = []
+        for cl in cls:
+            # Extend Cl to full ell range for synfast
+            full_cl = np.zeros(self.l_max + 1)
+            full_cl[2:] = cl
 
-        # Use fixed-sigma8 Cls
-        def compute_cls_fixed_sigma8():
-            ell = np.arange(2, self.l_max + 1)
-            z_edges = np.linspace(0, self.zmax, self.nslices + 1)
-            cosmo_fixed = ccl.Cosmology(
-                Omega_c=self.cosmo_params["Omega_c"],
-                Omega_b=self.cosmo_params["Omega_b"],
-                h=self.cosmo_params["h"],
-                n_s=self.cosmo_params["n_s"],
-                sigma8=0.8,
-                matter_power_spectrum="camb",
-                extra_parameters={"camb": {
-                    "halofit_version": "mead2020_feedback",
-                    "HMCode_logT_AGN": self.baryon_feedback
-                }},
-            )
+            # Generate Gaussian field
+            np.random.seed(self.seed)
+            delta_g = hp.synfast(full_cl, nside=nside)
 
-            cls_fixed = []
-            for z0, z1 in zip(z_edges[:-1], z_edges[1:]):
-                z = np.linspace(z0, z1, 100)
-                dz = z1 - z0
-                dndz = np.ones_like(z) / dz
-                tracer = ccl.NumberCountsTracer(
-                    cosmo_fixed, has_rsd=False, dndz=(z, dndz), bias=(z, np.ones_like(z))
-                )
-                cl_ii = ccl.angular_cl(cosmo_fixed, tracer, tracer, ell)
-                cls_fixed.append(cl_ii)
+            maps.append(delta_g)
 
-            return cls_fixed
-
-        cls_fixed = compute_cls_fixed_sigma8()
-
-        # Generate maps with same seed (identical random phases)
-        maps_current = []
-        maps_fixed = []
-
-        for i, (cl_curr, cl_fix) in enumerate(zip(cls_current, cls_fixed)):
-            np.random.seed(self.seed + i)  # Ensure reproducibility per shell
-
-            full_cl_curr = np.zeros(self.l_max + 1)
-            full_cl_curr[2:] = cl_curr
-
-            full_cl_fix = np.zeros(self.l_max + 1)
-            full_cl_fix[2:] = cl_fix
-
-            # Generate shared Gaussian random field in harmonic space using current Cl
-            alm = hp.synalm(full_cl_curr, new=True, lmax=self.l_max)
-            delta_curr = hp.alm2map(alm, nside=self.nside)
-
-            # Rescale to match the fixed Cls
-            norm_factor = np.sqrt(full_cl_fix[2:] / full_cl_curr[2:])
-            norm_factor = np.nan_to_num(norm_factor, nan=0.0, posinf=0.0, neginf=0.0)
-            alm_fix = hp.almxfl(alm, np.concatenate([[0, 0], norm_factor]))
-            delta_fix = hp.alm2map(alm_fix, nside=self.nside)
-
-            maps_current.append(delta_curr)
-            maps_fixed.append(delta_fix)
-
-        return maps_current, maps_fixed
+        return maps
 
 
-    def make_skewed_delta_maps_mixed(self, maps_current, maps_fixed):
+    def make_skewed_delta_maps(self, maps):
         """
         Apply a nonlinear skewing transformation using maps_fixed for the nonlinear part
         and maps_current for the linear input. Specifically:
 
-            y[i] = x[i] + alpha**2 * (0.5 * x_fid[i]^2 + 1/6 x_fid[i]^3 + ...)
+            y[i] = x[i] + beta**2 * (0.5 * x_fid[i]^2 + 1/6 x_fid[i]^3 + ...)
 
         Parameters
         ----------
-        maps_current : list of ndarray
-            Gaussian δ fields corresponding to current sigma8.
-        maps_fixed : list of ndarray
-            Gaussian δ fields with fixed sigma8 = 0.8.
+        maps : list of ndarray
+            Gaussian δ fields 
+
 
         Returns
         -------
         transformed_maps : list of ndarray
             Transformed δ fields with same variance as input maps_current.
         """
+        beta = self.beta
         alpha = self.alpha
         transformed_maps = []
+        maps_fixed = 
+        maps_current = 
 
-        for x, x_fid in zip(maps_current, maps_fixed):
-            y = x + alpha**2. * (0.5 * x_fid**2 + (1/6.0) * x_fid**3 + (1/24.0) * x_fid**4 +
+        for x in maps:
+
+            z = alpha * x
+            y = z + beta**2. * (0.5 * x_fid**2 + (1/6.0) * x_fid**3 + (1/24.0) * x_fid**4 +
                              (1/120.0) * x_fid**5 + (1/720.0) * x_fid**6)
 
-            var_x = np.var(x)
+            var_z = np.var(z)
             var_y = np.var(y)
-            y *= np.sqrt(var_x / var_y) 
+            y *= np.sqrt(var_z / var_y) 
             transformed_maps.append(y)
 
         return transformed_maps
@@ -391,8 +342,8 @@ class WeakLensingSim:
         """
         self.set_cosmo()
 
-        gauss_maps_current, gauss_maps_fixed = self.generate_gauss_matter_fields_with_fixed_sigma8()
-        matter_maps = self.make_skewed_delta_maps_mixed(gauss_maps_current, gauss_maps_fixed)
+        gauss_matter_maps = self.generate_gauss_matter_fields_from_scratch()
+        matter_maps = self.make_skewed_delta_maps()
         kappa_maps = self.compute_kappa_maps(matter_maps)
         noise_maps = self.generate_noise_only_kappa_maps()
 
