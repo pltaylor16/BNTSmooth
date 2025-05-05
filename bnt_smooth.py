@@ -10,7 +10,7 @@ import numpy as np
 class WeakLensingSim:
     def __init__(self, z_array, nz_list, n_eff_list, sigma_eps_list,
                  baryon_feedback=7, seed=42,
-                 alpha=1., beta=1.0,
+                 alpha=1.0, beta=1.0,
                  l_max=256, nside=256, nslices=20, cosmo_params=None):
         """
         Initialize the lognormal weak lensing simulation with exponential mapping parameters.
@@ -49,7 +49,7 @@ class WeakLensingSim:
         self.nz_list = []
         for z_i, nz_i in nz_list:
             interp_func = interp1d(z_i, nz_i, bounds_error=False, fill_value=0.0)
-            nz_interp = interp_func(z_array)
+            nz_interp = interp_func(z_array)    
             self.nz_list.append((z_array, nz_interp))
 
         self.n_eff_list = n_eff_list
