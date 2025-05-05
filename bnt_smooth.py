@@ -195,7 +195,7 @@ class WeakLensingSim:
             full_cl_fix[2:] = cl_fix
 
             # Generate shared Gaussian random field in harmonic space using current Cl
-            alm = hp.synalm(full_cl_curr, new=True, lmax=self.l_max, verbose=False)
+            alm = hp.synalm(full_cl_curr, new=True, lmax=self.l_max)
             delta_curr = hp.alm2map(alm, nside=self.nside, verbose=False)
 
             # Rescale to match the fixed Cls
@@ -215,7 +215,7 @@ class WeakLensingSim:
         Apply a nonlinear skewing transformation using maps_fixed for the nonlinear part
         and maps_current for the linear input. Specifically:
 
-            y[i] = x[i] + alpha * (0.5 * x_fid[i]^2 + 1/6 x_fid[i]^3 + ...)
+            y[i] = x[i] + alpha**2 * (0.5 * x_fid[i]^2 + 1/6 x_fid[i]^3 + ...)
 
         Parameters
         ----------
@@ -233,7 +233,7 @@ class WeakLensingSim:
         transformed_maps = []
 
         for x, x_fid in zip(maps_current, maps_fixed):
-            y = x + alpha * (0.5 * x_fid**2 + (1/6.0) * x_fid**3 + (1/24.0) * x_fid**4 +
+            y = x + alpha**2. * (0.5 * x_fid**2 + (1/6.0) * x_fid**3 + (1/24.0) * x_fid**4 +
                              (1/120.0) * x_fid**5 + (1/720.0) * x_fid**6)
 
             var_x = np.var(x)

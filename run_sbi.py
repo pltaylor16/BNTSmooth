@@ -44,7 +44,7 @@ def make_equal_ngal_bins(nz_func, z_grid, nbins, sigma_z0=0.05):
 
 
 # --- Simulation settings ---
-n_simulations = 500
+n_simulations = 200
 l_max = 1500
 nside = 512
 nslices = 20
@@ -137,7 +137,7 @@ def main():
     # Subset training
     print("Starting SBI training with only 100 simulations...")
     inference_100 = sbi_inference.SNPE(prior=prior, density_estimator="maf")
-    density_estimator_100 = inference_100.append_simulations(theta_train[:250], x_train[:250]).train()
+    density_estimator_100 = inference_100.append_simulations(theta_train[:100], x_train[:100]).train()
     posterior_100 = inference_100.build_posterior(density_estimator_100)
     samples_100 = posterior_100.sample((n_samples,), x=x_obs)
 
