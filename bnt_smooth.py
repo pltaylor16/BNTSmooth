@@ -162,7 +162,7 @@ class WeakLensingSim:
         Apply a nonlinear skewing transformation using maps_fixed for the nonlinear part
         and maps_current for the linear input. Specifically:
 
-            y[i] = x[i] + beta**2 * (0.5 * x_fid[i]^2 + 1/6 x_fid[i]^3 + ...)
+            y[i] = x[i] + beta**2 * (0.5 * x[i]^2 + 1/6 x[i]^3 + ...)
 
         Parameters
         ----------
@@ -182,8 +182,8 @@ class WeakLensingSim:
         for x in maps:
 
             z = alpha * x
-            y = z + beta**2. * (0.5 * x_fid**2 + (1/6.0) * x_fid**3 + (1/24.0) * x_fid**4 +
-                             (1/120.0) * x_fid**5 + (1/720.0) * x_fid**6)
+            y = z + beta**2. * (0.5 * x**2 + (1/6.0) * x**3 + (1/24.0) * x**4 +
+                             (1/120.0) * x**5 + (1/720.0) * x**6)
 
             var_z = np.var(z)
             var_y = np.var(y)
