@@ -185,23 +185,24 @@ class WeakLensingSim:
         maps_current = []
         maps_fixed = []
 
-        rng = np.random.default_rng(self.seed)
-        for cl_curr, cl_fix in zip(cls_current, cls_fixed):
+        for i, (cl_curr, cl_fix) in enumerate(zip(cls_current, cls_fixed)):
+            np.random.seed(self.seed + i)  # Ensure reproducibility per shell
+
             full_cl_curr = np.zeros(self.l_max + 1)
             full_cl_curr[2:] = cl_curr
 
             full_cl_fix = np.zeros(self.l_max + 1)
             full_cl_fix[2:] = cl_fix
 
-            # Generate shared Gaussian random field in harmonic space
-            alm = hp.synalm(full_cl_curr, new=True, lmax=self.l_max, verbose=False, rng=rng)
-            delta_curr = hp.alm2map(alm, nside=nside, verbose=False)
+            # Generate shared Gaussian random field in harmonic space using current Cl
+            alm = hp.synalm(full_cl_curr, new=True, lmax=self.l_max, verbose=False)
+            delta_curr = hp.alm2map(alm, nside=self.nside, verbose=False)
 
-            # Reuse the same alm but rescale to the fixed Cls
+            # Rescale to match the fixed Cls
             norm_factor = np.sqrt(full_cl_fix[2:] / full_cl_curr[2:])
             norm_factor = np.nan_to_num(norm_factor, nan=0.0, posinf=0.0, neginf=0.0)
             alm_fix = hp.almxfl(alm, np.concatenate([[0, 0], norm_factor]))
-            delta_fix = hp.alm2map(alm_fix, nside=nside, verbose=False)
+            delta_fix = hp.alm2map(alm_fix, nside=self.nside, verbose=False)
 
             maps_current.append(delta_curr)
             maps_fixed.append(delta_fix)

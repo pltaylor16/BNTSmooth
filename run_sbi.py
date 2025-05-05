@@ -79,7 +79,6 @@ def worker(theta):
         sigma_eps_list=sigma_eps_list,
         baryon_feedback=baryon_feedback,
         sigma8=sigma8,
-        Omega_m=0.3,
         alpha=alpha,
         seed=np.random.randint(1e6),
         l_max=l_max,
