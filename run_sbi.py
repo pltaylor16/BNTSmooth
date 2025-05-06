@@ -47,8 +47,8 @@ def make_equal_ngal_bins(nz_func, z_grid, nbins, sigma_z0=0.05):
 nside = 512
 l_max = 1500
 nslices = 15
-n_rounds = 8
-n_simulations_per_round = 100
+n_rounds = 5
+n_simulations_per_round = 200
 
 nbins = 5
 n_samples = 5000
@@ -97,8 +97,8 @@ def train_density_estimator(theta, x, prior, x_obs, n_samples):
 
 
 def main():
-    prior_min = torch.tensor([0.5, 0.5])  # alpha, beta
-    prior_max = torch.tensor([1.5, 1.5])
+    prior_min = torch.tensor([0.9, 0.9])  # alpha, beta
+    prior_max = torch.tensor([1.1, 1.1])
     prior = sbi_utils.BoxUniform(prior_min, prior_max)
 
     theta_all = []
