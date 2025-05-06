@@ -49,10 +49,10 @@ nside = 512
 l_max = 1500
 nslices = 15
 nbins = 5
-n_samples = 1000
+n_samples = 500
 n_processes = 10
 n_rounds = 5
-n_simulations_per_round = 200
+n_simulations_per_round = 100
 
 z = np.linspace(0.01, 2.5, 500)
 nz_list, _ = make_equal_ngal_bins(parent_nz, z, nbins=nbins)
@@ -112,6 +112,10 @@ def main():
         theta_valid = []
         print("Running simulations with individual timeouts...")
 
+        # Fiducial simulation (alpha=1.0, beta=1.0)
+        print("Computing fiducial observation (x_obs)...")
+        x_obs = torch.tensor(worker([1.0, 1.0]), dtype=torch.float32)
+
         with multiprocessing.Pool(processes=n_processes) as pool:
             results = [pool.apply_async(worker, (theta,)) for theta in theta_np]
 
@@ -133,8 +137,8 @@ def main():
             continue
 
         # Split valid thetas and xs
-        theta_valid = torch.tensor([pair[0] for pair in valid_pairs], dtype=torch.float32)
-        x_valid = torch.tensor([pair[1] for pair in valid_pairs], dtype=torch.float32)
+        theta_valid = torch.stack([torch.tensor(pair[0], dtype=torch.float32) for pair in valid_pairs])
+        x_valid = torch.stack([torch.tensor(pair[1], dtype=torch.float32) for pair in valid_pairs])
 
         # Append to full training set
         theta_all.append(theta_valid)
@@ -149,8 +153,14 @@ def main():
         posterior = inference.build_posterior(density_estimator)
 
         # Evaluate posterior at fiducial observation
-        x_obs = torch.tensor(worker([1.0, 1.0]), dtype=torch.float32)
         samples = posterior.sample((n_samples,), x=x_obs)
+
+        # Save concatenated data so far
+        theta_path = f"data/theta_all_round{round_idx+1}.pt"
+        x_path = f"data/x_all_round{round_idx+1}.pt"
+        torch.save(theta_concat, theta_path)
+        torch.save(x_concat, x_path)
+        print(f"Saved simulation data: {theta_path}, {x_path}")
 
         # Save triangle plot
         param_names = ["alpha", "beta"]
