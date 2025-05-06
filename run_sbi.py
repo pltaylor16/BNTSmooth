@@ -130,7 +130,8 @@ def main():
             x_round = pool.map(worker, theta_np)
 
         theta_concat = theta_round
-        x_concat = torch.cat(x_round)
+        x_round_tensors = [torch.tensor(x, dtype=torch.float32) for x in x_round]
+        x_concat = torch.cat(x_round_tensors)
 
         with multiprocessing.Pool(1) as pool:
             results = pool.starmap(
