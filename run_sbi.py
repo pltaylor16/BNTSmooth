@@ -44,18 +44,19 @@ def make_equal_ngal_bins(nz_func, z_grid, nbins, sigma_z0=0.05):
 
 
 # --- Simulation settings ---
-nside = 512
-l_max = 1500
-nslices = 15
-#nside = 32
-#l_max = 30
-#nslices = 5
+#nside = 512
+#l_max = 1500
+#nslices = 15
+nside = 32
+l_max = 30
+nslices = 5
+n_rounds = 5
+n_simulations_per_round = 10
 
 nbins = 5
 n_samples = 5000
 n_processes = 10
-n_rounds = 5
-n_simulations_per_round = 10
+
 
 z = np.linspace(0.01, 2.5, 500)
 nz_list, _ = make_equal_ngal_bins(parent_nz, z, nbins=nbins)
@@ -90,6 +91,14 @@ def worker(theta):
     return data_vector
 
 
+def train_density_estimator(theta, x, prior, x_obs, n_samples):
+    inference = sbi_inference.SNPE(prior=prior, density_estimator="maf")
+    density_estimator = inference.append_simulations(theta, x).train()
+    posterior = inference.build_posterior(density_estimator)
+    samples = posterior.sample((n_samples,), x=x_obs)
+    return posterior, samples
+
+
 def main():
     prior_min = torch.tensor([0.5, 0.5])  # alpha, beta
     prior_max = torch.tensor([1.5, 1.5])
@@ -115,28 +124,27 @@ def main():
             if round_idx == 0:
                 theta_round = prior.sample((n_simulations_per_round,))
             else:
-                theta_round = posterior.sample((n_simulations_per_round,), x=x_obs)
+                sample_idx = np.random.choice(len(samples), size=n_simulations_per_round, replace=False)
+                theta_round = samples[sample_idx]
             theta_np = theta_round.numpy()
 
         # Simulate
         with multiprocessing.Pool(processes=n_processes) as pool:
             x_round = pool.map(worker, theta_np)
 
-        # Do the rest of the computation as one task to avoid hang
-        with multiprocessing.Pool(1) as pool:
-            # Append to all data
-            theta_all.append(theta_round)
-            x_all.append(torch.tensor(x_round, dtype=torch.float32))
+        # Append to all data
+        theta_all.append(theta_round)
+        x_all.append(torch.tensor(x_round, dtype=torch.float32))
 
-            theta_concat = torch.cat(theta_all)
+        theta_concat = torch.cat(theta_all)
             x_concat = torch.cat(x_all)
 
-            # Train
-            density_estimator = inference.append_simulations(theta_concat, x_concat).train()
-            posterior = inference.build_posterior(density_estimator)
-
-        #sample from the posterior
-        samples = posterior.sample((n_samples,), x=x_obs)
+        with multiprocessing.Pool(1) as pool:
+            results = pool.starmap(
+                train_density_estimator,
+                [(theta_concat, x_concat, prior, x_obs, n_samples)]
+            )
+            posterior, samples = results[0]
 
         # Plot
         param_names = ["alpha", "beta"]
