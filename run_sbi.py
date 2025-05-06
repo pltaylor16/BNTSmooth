@@ -47,7 +47,7 @@ def make_equal_ngal_bins(nz_func, z_grid, nbins, sigma_z0=0.05):
 nside = 512
 l_max = 1500
 nslices = 15
-n_simulations_per_round = [100,500,500,1000]
+n_simulations_per_round = [200,500,500,1000]
 n_rounds = len(n_simulations_per_round)
 
 nbins = 5
@@ -89,7 +89,7 @@ def worker(theta):
 
 
 def train_density_estimator(theta, x, prior, x_obs, n_samples):
-    inference = sbi_inference.SNPE(prior=prior, density_estimator="maf")
+    inference = sbi_inference.SNPE(prior=prior, density_estimator="mdn")
     density_estimator = inference.append_simulations(theta, x).train()
     posterior = inference.build_posterior(density_estimator)
     samples = posterior.sample((n_samples,), x=x_obs)
