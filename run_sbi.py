@@ -97,8 +97,8 @@ def train_density_estimator(theta, x, prior, x_obs, n_samples):
 
 
 def main():
-    prior_min = torch.tensor([0.5, 0.5])  # alpha, beta
-    prior_max = torch.tensor([1.5, 1.5])
+    prior_min = torch.tensor([0.9, 0.9])  # alpha, beta
+    prior_max = torch.tensor([1.1, 1.1])
     prior = sbi_utils.BoxUniform(prior_min, prior_max)
 
 
