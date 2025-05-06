@@ -137,7 +137,7 @@ def main():
         x_all.append(torch.tensor(x_round, dtype=torch.float32))
 
         theta_concat = torch.cat(theta_all)
-            x_concat = torch.cat(x_all)
+        x_concat = torch.cat(x_all)
 
         with multiprocessing.Pool(1) as pool:
             results = pool.starmap(
@@ -166,4 +166,3 @@ if __name__ == "__main__":
     use_bnt = args.use_bnt
     main()
 
-    
