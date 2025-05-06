@@ -119,15 +119,16 @@ def main():
         with concurrent.futures.ProcessPoolExecutor(max_workers=n_processes) as executor:
             futures = {executor.submit(worker, theta): theta for theta in theta_np}
 
-            for i, (future, theta) in enumerate(zip(futures.keys(), futures.values())):
+            for future in concurrent.futures.as_completed(futures, timeout=timeout * len(futures)):
+                theta = futures[future]
                 try:
-                    result = future.result(timeout=timeout)
+                    result = future.result(timeout=1e-6)  # Already completed, so no wait
                     x_round.append(result)
                     theta_valid.append(theta)
                 except concurrent.futures.TimeoutError:
-                    print(f"[Warning] Simulation {i} with theta={theta} timed out and was skipped.")
+                    print(f"[Warning] Simulation with theta={theta} timed out and was skipped.")
                 except Exception as e:
-                    print(f"[Error] Simulation {i} with theta={theta} failed: {e}")
+                    print(f"[Error] Simulation with theta={theta} failed: {e}")
 
         # Filter valid results (drop any failed ones)
         valid_pairs = [(theta, x) for theta, x in zip(theta_round, x_round) if x is not None]
