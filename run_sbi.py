@@ -51,7 +51,7 @@ l_max = 1500
 nside = 512
 nslices = 15
 nbins = 5
-n_processes = 20
+n_processes = 10
 seed = 1234
 
 z = np.linspace(0.01, 2.5, 500)
