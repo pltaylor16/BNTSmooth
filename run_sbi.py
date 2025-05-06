@@ -50,8 +50,8 @@ nslices = 15
 nbins = 5
 n_samples = 5000
 n_processes = 10
-n_rounds = 10
-n_simulations_per_round = 500
+n_rounds = 5
+n_simulations_per_round = 100
 
 z = np.linspace(0.01, 2.5, 500)
 nz_list, _ = make_equal_ngal_bins(parent_nz, z, nbins=nbins)
