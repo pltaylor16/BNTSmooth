@@ -1,3 +1,4 @@
+import multiprocessing
 from multiprocessing import TimeoutError
 import numpy as np
 from functools import partial
