@@ -1,4 +1,4 @@
-import multiprocessing
+from multiprocessing import TimeoutError
 import numpy as np
 from functools import partial
 from bnt_smooth import ProcessMaps
@@ -48,10 +48,10 @@ nside = 512
 l_max = 1500
 nslices = 15
 nbins = 5
-n_samples = 5000
+n_samples = 1000
 n_processes = 10
-n_rounds = 10
-n_simulations_per_round = 500
+n_rounds = 5
+n_simulations_per_round = 200
 
 z = np.linspace(0.01, 2.5, 500)
 nz_list, _ = make_equal_ngal_bins(parent_nz, z, nbins=nbins)
@@ -107,34 +107,60 @@ def main():
         theta_np = theta_round.numpy()
 
         # Simulate
+        x_round = []
+        theta_valid = []
+        print("Running simulations with individual timeouts...")
+
         with multiprocessing.Pool(processes=n_processes) as pool:
-            x_round = pool.map(worker, theta_np)
+            results = [pool.apply_async(worker, (theta,)) for theta in theta_np]
 
-        # Append to all data
-        theta_all.append(theta_round)
-        x_all.append(torch.tensor(x_round, dtype=torch.float32))
+            for i, (theta, result) in enumerate(zip(theta_np, results)):
+                try:
+                    data_vector = result.get(timeout=600)  # 10 minutes per simulation
+                    x_round.append(data_vector)
+                    theta_valid.append(theta)
+                except TimeoutError:
+                    print(f"[Warning] Simulation {i} with theta={theta} timed out and was skipped.")
+                except Exception as e:
+                    print(f"[Error] Simulation {i} with theta={theta} failed: {e}")
 
-        theta_concat = torch.cat(theta_all)
-        x_concat = torch.cat(x_all)
+    # Filter valid results (drop any failed ones)
+    valid_pairs = [(theta, x) for theta, x in zip(theta_round, x_round) if x is not None]
 
-        # Train
-        density_estimator = inference.append_simulations(theta_concat, x_concat).train()
-        posterior = inference.build_posterior(density_estimator)
+    if len(valid_pairs) == 0:
+        print(f"[Round {round_idx+1}] Warning: no valid simulations, skipping training.")
+        continue
 
-        # Save posterior sample at fiducial point
-        x_obs = torch.tensor(worker([1.0, 1.0]), dtype=torch.float32)
-        samples = posterior.sample((n_samples,), x=x_obs)
+    # Split valid thetas and xs
+    theta_valid = torch.tensor([pair[0] for pair in valid_pairs], dtype=torch.float32)
+    x_valid = torch.tensor([pair[1] for pair in valid_pairs], dtype=torch.float32)
 
-        # Plot
-        param_names = ["alpha", "beta"]
-        g = MCSamples(samples=samples.numpy(), names=param_names, labels=param_names)
+    # Append to full training set
+    theta_all.append(theta_valid)
+    x_all.append(x_valid)
 
-        gplt = plots.get_subplot_plotter()
-        gplt.triangle_plot([g], filled=True)
+    # Concatenate all so far
+    theta_concat = torch.cat(theta_all)
+    x_concat = torch.cat(x_all)
 
-        fname = f"data/posterior_sequential_bnt_round{round_idx+1}.png" if use_bnt else f"data/posterior_sequential_round{round_idx+1}.png"
-        gplt.export(fname)
-        print(f"Saved: {fname}")
+    # Train and build posterior
+    density_estimator = inference.append_simulations(theta_concat, x_concat).train()
+    posterior = inference.build_posterior(density_estimator)
+
+    # Evaluate posterior at fiducial observation
+    x_obs = torch.tensor(worker([1.0, 1.0]), dtype=torch.float32)
+    samples = posterior.sample((n_samples,), x=x_obs)
+
+    # Save triangle plot
+    param_names = ["alpha", "beta"]
+    g = MCSamples(samples=samples.numpy(), names=param_names, labels=param_names)
+
+    gplt = plots.get_subplot_plotter()
+    gplt.triangle_plot([g], filled=True)
+
+    fname = f"data/posterior_sequential_bnt_round{round_idx+1}.png" if use_bnt else f"data/posterior_sequential_round{round_idx+1}.png"
+    gplt.export(fname)
+    print(f"Saved: {fname}")
 
 
 if __name__ == "__main__":
