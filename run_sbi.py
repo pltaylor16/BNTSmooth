@@ -44,7 +44,7 @@ def make_equal_ngal_bins(nz_func, z_grid, nbins, sigma_z0=0.05):
 
 
 # --- Simulation settings ---
-n_simulations = 2000
+n_simulations = 5000
 l_max = 1500
 nside = 512
 nslices = 15
@@ -87,8 +87,8 @@ def worker(theta):
 
 def main():
     # --- SBI settings ---
-    prior_min = torch.tensor([0., 0.5])  # alpha, beta
-    prior_max = torch.tensor([2., 1.5])
+    prior_min = torch.tensor([0.75, 0.75])  # alpha, beta
+    prior_max = torch.tensor([1.25, 1.25])
     prior = sbi_utils.BoxUniform(prior_min, prior_max)
 
     inference = sbi_inference.SNPE(prior=prior, density_estimator="maf")
@@ -129,7 +129,7 @@ def main():
     # Subset training
     print("Starting SBI training with only 100 simulations...")
     inference_100 = sbi_inference.SNPE(prior=prior, density_estimator="maf")
-    density_estimator_100 = inference_100.append_simulations(theta_train[:1000], x_train[:1000]).train()
+    density_estimator_100 = inference_100.append_simulations(theta_train[:3000], x_train[:3000]).train()
     posterior_100 = inference_100.build_posterior(density_estimator_100)
     samples_100 = posterior_100.sample((n_samples,), x=x_obs)
 
