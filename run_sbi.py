@@ -1,4 +1,5 @@
-import concurrent.futures
+import multiprocessing
+from multiprocessing import TimeoutError
 import numpy as np
 from functools import partial
 from bnt_smooth import ProcessMaps
@@ -97,10 +98,6 @@ def main():
     theta_all = []
     x_all = []
 
-    # Fiducial simulation (alpha=1.0, beta=1.0)
-    print("Computing fiducial observation (x_obs)...")
-    x_obs = torch.tensor(worker([1.0, 1.0]), dtype=torch.float32)
-
     for round_idx in range(n_rounds):
         print(f"\n--- Starting round {round_idx + 1} ---")
 
@@ -116,19 +113,22 @@ def main():
         theta_valid = []
         print("Running simulations with individual timeouts...")
 
-        with concurrent.futures.ProcessPoolExecutor(max_workers=n_processes) as executor:
-            futures = {executor.submit(worker, theta): theta for theta in theta_np}
+        # Fiducial simulation (alpha=1.0, beta=1.0)
+        print("Computing fiducial observation (x_obs)...")
+        x_obs = torch.tensor(worker([1.0, 1.0]), dtype=torch.float32)
 
-            for future in concurrent.futures.as_completed(futures, timeout=timeout * len(futures)):
-                theta = futures[future]
+        with multiprocessing.Pool(processes=n_processes) as pool:
+            results = [pool.apply_async(worker, (theta,)) for theta in theta_np]
+
+            for i, (theta, result) in enumerate(zip(theta_np, results)):
                 try:
-                    result = future.result(timeout=1e-6)  # Already completed, so no wait
-                    x_round.append(result)
+                    data_vector = result.get(timeout=timeout)  # 3 minutes per simulation
+                    x_round.append(data_vector)
                     theta_valid.append(theta)
-                except concurrent.futures.TimeoutError:
-                    print(f"[Warning] Simulation with theta={theta} timed out and was skipped.")
+                except TimeoutError:
+                    print(f"[Warning] Simulation {i} with theta={theta} timed out and was skipped.")
                 except Exception as e:
-                    print(f"[Error] Simulation with theta={theta} failed: {e}")
+                    print(f"[Error] Simulation {i} with theta={theta} failed: {e}")
 
         # Filter valid results (drop any failed ones)
         valid_pairs = [(theta, x) for theta, x in zip(theta_round, x_round) if x is not None]
