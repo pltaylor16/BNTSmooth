@@ -124,43 +124,43 @@ def main():
                 except Exception as e:
                     print(f"[Error] Simulation {i} with theta={theta} failed: {e}")
 
-    # Filter valid results (drop any failed ones)
-    valid_pairs = [(theta, x) for theta, x in zip(theta_round, x_round) if x is not None]
+        # Filter valid results (drop any failed ones)
+        valid_pairs = [(theta, x) for theta, x in zip(theta_round, x_round) if x is not None]
 
-    if len(valid_pairs) == 0:
-        print(f"[Round {round_idx+1}] Warning: no valid simulations, skipping training.")
-        continue
+        if len(valid_pairs) == 0:
+            print(f"[Round {round_idx+1}] Warning: no valid simulations, skipping training.")
+            continue
 
-    # Split valid thetas and xs
-    theta_valid = torch.tensor([pair[0] for pair in valid_pairs], dtype=torch.float32)
-    x_valid = torch.tensor([pair[1] for pair in valid_pairs], dtype=torch.float32)
+        # Split valid thetas and xs
+        theta_valid = torch.tensor([pair[0] for pair in valid_pairs], dtype=torch.float32)
+        x_valid = torch.tensor([pair[1] for pair in valid_pairs], dtype=torch.float32)
 
-    # Append to full training set
-    theta_all.append(theta_valid)
-    x_all.append(x_valid)
+        # Append to full training set
+        theta_all.append(theta_valid)
+        x_all.append(x_valid)
 
-    # Concatenate all so far
-    theta_concat = torch.cat(theta_all)
-    x_concat = torch.cat(x_all)
+        # Concatenate all so far
+        theta_concat = torch.cat(theta_all)
+        x_concat = torch.cat(x_all)
 
-    # Train and build posterior
-    density_estimator = inference.append_simulations(theta_concat, x_concat).train()
-    posterior = inference.build_posterior(density_estimator)
+        # Train and build posterior
+        density_estimator = inference.append_simulations(theta_concat, x_concat).train()
+        posterior = inference.build_posterior(density_estimator)
 
-    # Evaluate posterior at fiducial observation
-    x_obs = torch.tensor(worker([1.0, 1.0]), dtype=torch.float32)
-    samples = posterior.sample((n_samples,), x=x_obs)
+        # Evaluate posterior at fiducial observation
+        x_obs = torch.tensor(worker([1.0, 1.0]), dtype=torch.float32)
+        samples = posterior.sample((n_samples,), x=x_obs)
 
-    # Save triangle plot
-    param_names = ["alpha", "beta"]
-    g = MCSamples(samples=samples.numpy(), names=param_names, labels=param_names)
+        # Save triangle plot
+        param_names = ["alpha", "beta"]
+        g = MCSamples(samples=samples.numpy(), names=param_names, labels=param_names)
 
-    gplt = plots.get_subplot_plotter()
-    gplt.triangle_plot([g], filled=True)
+        gplt = plots.get_subplot_plotter()
+        gplt.triangle_plot([g], filled=True)
 
-    fname = f"data/posterior_sequential_bnt_round{round_idx+1}.png" if use_bnt else f"data/posterior_sequential_round{round_idx+1}.png"
-    gplt.export(fname)
-    print(f"Saved: {fname}")
+        fname = f"data/posterior_sequential_bnt_round{round_idx+1}.png" if use_bnt else f"data/posterior_sequential_round{round_idx+1}.png"
+        gplt.export(fname)
+        print(f"Saved: {fname}")
 
 
 if __name__ == "__main__":
