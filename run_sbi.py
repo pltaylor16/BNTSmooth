@@ -53,6 +53,7 @@ n_samples = 500
 n_processes = 10
 n_rounds = 5
 n_simulations_per_round = 100
+timeout = 180 # timeout in sec
 
 z = np.linspace(0.01, 2.5, 500)
 nz_list, _ = make_equal_ngal_bins(parent_nz, z, nbins=nbins)
@@ -121,7 +122,7 @@ def main():
 
             for i, (theta, result) in enumerate(zip(theta_np, results)):
                 try:
-                    data_vector = result.get(timeout=600)  # 10 minutes per simulation
+                    data_vector = result.get(timeout=timeout)  # 3 minutes per simulation
                     x_round.append(data_vector)
                     theta_valid.append(theta)
                 except TimeoutError:
