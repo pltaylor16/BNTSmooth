@@ -131,7 +131,7 @@ def main():
 
         theta_concat = theta_round
         x_round_tensors = [torch.tensor(x, dtype=torch.float32) for x in x_round]
-        x_concat = torch.cat(x_round_tensors)
+        x_concat = torch.stack(x_round_tensors)  # shape: [10, D]
 
         with multiprocessing.Pool(1) as pool:
             results = pool.starmap(
