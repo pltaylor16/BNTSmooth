@@ -47,8 +47,8 @@ def make_equal_ngal_bins(nz_func, z_grid, nbins, sigma_z0=0.05):
 nside = 512
 l_max = 1500
 nslices = 15
-n_rounds = 5
-n_simulations_per_round = 1000
+n_simulations_per_round = [100,500,500,1000]
+n_rounds = len(n_simulations_per_round)
 
 nbins = 5
 n_samples = 5000
@@ -118,9 +118,9 @@ def main():
 
             # Sample theta
             if round_idx == 0:
-                theta_round = prior.sample((n_simulations_per_round,))
+                theta_round = prior.sample((n_simulations_per_round[round_idx],))
             else:
-                sample_idx = np.random.choice(len(samples), size=n_simulations_per_round, replace=False)
+                sample_idx = np.random.choice(len(samples), size=n_simulations_per_round[round_idx], replace=False)
                 theta_round = samples[sample_idx]
             theta_np = theta_round.numpy()
 
