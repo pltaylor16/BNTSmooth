@@ -40,10 +40,13 @@ def make_equal_ngal_bins(nz_func, z_grid, nbins, sigma_z0=0.05):
     return nz_bins, edges
 
 
-def run_simulation(theta, queue, use_bnt, sim_args):
+def run_simulation(theta, queue, use_bnt, sim_args, seed=None):
     alpha, beta = float(theta[0]), float(theta[1])
     try:
-        sim = ProcessMaps(alpha=alpha, beta=beta, **sim_args)
+        local_args = sim_args.copy()
+        if seed is not None:
+            local_args["seed"] = seed
+        sim = ProcessMaps(alpha=alpha, beta=beta, **local_args)
         kappa_maps = sim.generate_noisy_kappa_maps()
         if use_bnt:
             kappa_maps = sim.bnt_transform_kappa_maps(kappa_maps)
@@ -87,13 +90,19 @@ def main():
 
     theta_all, x_all = [], []
 
-    # Fiducial point
-    x_obs = torch.tensor(run_simulation([1.0, 1.0], Queue(), use_bnt, sim_args), dtype=torch.float32)
+    # Compute fiducial observation
+    print("Computing x_obs at (alpha=1.0, beta=1.0)...")
+    queue = Queue()
+    run_simulation([1.0, 1.0], queue, use_bnt, sim_args, seed=999)
+    x_obs_result = queue.get()
+    if x_obs_result is None:
+        raise RuntimeError("Fiducial x_obs simulation failed.")
+    x_obs = torch.tensor(x_obs_result, dtype=torch.float32)
 
     for round_idx in range(n_rounds):
         print(f"\n--- Starting round {round_idx + 1} ---")
 
-        # Draw samples
+        # Sample new thetas
         if round_idx == 0:
             theta_round = prior.sample((n_simulations_per_round,))
         else:
@@ -132,25 +141,23 @@ def main():
         x_concat = torch.cat(x_all)
         theta_concat = torch.cat(theta_all)
 
-
+        # Train
         density_estimator = inference.append_simulations(theta_concat, x_concat).train()
         posterior = inference.build_posterior(density_estimator)
         samples = posterior.sample((n_samples,), x=x_obs)
 
         # Save triangle plot
-        from getdist import MCSamples, plots
         g = MCSamples(samples=samples.numpy(), names=["alpha", "beta"], labels=["alpha", "beta"])
         gplt = plots.get_subplot_plotter()
         gplt.triangle_plot([g], filled=True)
         suffix = "bnt" if use_bnt else "nobnt"
-        fname = f"data/posterior_sequential_{suffix}_round{round_idx + 1}.png"
-        gplt.export(fname)
-        print(f"[Saved] Posterior plot → {fname}")
+        plot_name = f"data/posterior_sequential_{suffix}_round{round_idx + 1}.png"
+        gplt.export(plot_name)
+        print(f"[Saved] Posterior plot → {plot_name}")
 
         # Save simulation data
         torch.save(theta_concat, f"data/{suffix}_theta_all_round{round_idx+1}.pt")
         torch.save(x_concat, f"data/{suffix}_x_all_round{round_idx+1}.pt")
-
 
 
 if __name__ == "__main__":
