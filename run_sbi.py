@@ -96,6 +96,11 @@ def main():
     theta_all = []
     x_all = []
 
+    #must use multiprocessing to produce data o.w. crash
+    with multiprocessing.Pool(1) as pool:
+        x_obs_list = pool.map(worker, [[1.0, 1.0]])
+    x_obs = torch.tensor(x_obs_list[0], dtype=torch.float32)
+
     for round_idx in range(n_rounds):
         print(f"\n--- Starting round {round_idx + 1} ---")
 
@@ -123,7 +128,6 @@ def main():
 
         # Save posterior sample at fiducial point
         x_obs = torch.tensor(worker([1.0, 1.0]), dtype=torch.float32)
-        samples = posterior.sample((n_samples,), x=x_obs)
 
         # Plot
         param_names = ["alpha", "beta"]
