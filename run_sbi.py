@@ -100,7 +100,10 @@ def main():
         print(f"\n--- Starting round {round_idx + 1} ---")
 
         # Sample theta
-        theta_round = prior.sample((n_simulations_per_round,))
+        if round_idx == 0:
+            theta_round = prior.sample((n_simulations_per_round,))
+        else:
+            theta_round = posterior.sample((n_simulations_per_round,), x=x_obs)
         theta_np = theta_round.numpy()
 
         # Simulate
