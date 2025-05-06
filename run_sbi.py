@@ -43,27 +43,27 @@ def make_equal_ngal_bins(nz_func, z_grid, nbins, sigma_z0=0.05):
     return nz_bins, edges
 
 
-# --- Simulation settings ---
-n_simulations = 10000
+# --- Settings ---
+n_rounds = 10
+n_simulations_per_round = 500
+n_samples = 5000
 l_max = 1500
 nside = 512
 nslices = 15
 nbins = 5
-n_processes = 10
-n_samples = 5000
+n_processes = 20
+seed = 1234
 
 z = np.linspace(0.01, 2.5, 500)
 nz_list, _ = make_equal_ngal_bins(parent_nz, z, nbins=nbins)
 n_eff_list = [30.0 / nbins] * nbins
 sigma_eps_list = [0.26] * nbins
 baryon_feedback = 7.
-seed = 1234
 
 
 def worker(theta):
     alpha, beta = float(theta[0]), float(theta[1])
     print(f"Running simulation with alpha = {alpha:.3f}, beta = {beta:.3f}")
-
     sim = ProcessMaps(
         z_array=z,
         nz_list=nz_list,
@@ -77,81 +77,60 @@ def worker(theta):
         nside=nside,
         nslices=nslices
     )
-
     kappa_maps = sim.generate_noisy_kappa_maps()
     if use_bnt:
         kappa_maps = sim.bnt_transform_kappa_maps(kappa_maps)
-    data_vector = sim.compute_data_vector(kappa_maps)
-    return data_vector
+    return sim.compute_data_vector(kappa_maps)
 
 
 def main():
-    # --- SBI settings ---
-    prior_min = torch.tensor([0.9, 0.9])  # alpha, beta
-    prior_max = torch.tensor([1.1, 1.1])
+    prior_min = torch.tensor([0.5, 0.5])  # alpha, beta
+    prior_max = torch.tensor([1.5, 1.5])
     prior = sbi_utils.BoxUniform(prior_min, prior_max)
 
     inference = sbi_inference.SNPE(prior=prior, density_estimator="maf")
+    proposal = prior
 
-    theta_samples = prior.sample((n_simulations,))
-    theta_np = theta_samples.numpy()
+    x_obs = torch.tensor(worker([1.0, 1.0]), dtype=torch.float32)
 
-    print("Starting parallel simulations...")
-    with multiprocessing.Pool(processes=n_processes) as pool:
-        x_data = pool.map(worker, theta_np)
-    print("All simulations complete.\n")
+    for r in range(n_rounds):
+        print(f"\n--- Round {r+1}/{n_rounds} ---")
+        theta = proposal.sample((n_simulations_per_round,))
+        theta_np = theta.numpy()
 
+        with multiprocessing.Pool(processes=n_processes) as pool:
+            x_data = pool.map(worker, theta_np)
+
+        x_tensor = torch.tensor(x_data, dtype=torch.float32)
+        inference = inference.append_simulations(theta, x_tensor, proposal=proposal).train()
+        posterior = inference.build_posterior()
+        proposal = posterior
+
+        # Plot current posterior
+        samples = posterior.sample((n_samples,), x=x_obs)
+        g = MCSamples(samples=samples.numpy(), names=["alpha", "beta"], labels=["alpha", "beta"])
+        gplt = plots.get_subplot_plotter()
+        gplt.triangle_plot([g], filled=True)
+
+        suffix = "_bnt" if use_bnt else ""
+        output_path = f"data/posterior_sequential_round{r+1}{suffix}.png"
+        gplt.export(output_path)
+        print(f"Saved {output_path}")
+
+    # Save final posterior
+    final_samples = posterior.sample((n_samples,), x=x_obs)
     if use_bnt:
-        np.save("data/data_vector_bnt.npy", x_data)
+        np.save("data/samples_sequential_bnt.npy", final_samples)
+        np.save("data/x_obs_sequential_bnt.npy", x_obs)
     else:
-        np.save("data/data_vector.npy", x_data)
-
-    x_tensor = torch.tensor(x_data, dtype=torch.float32)
-
-    # Use fiducial point for observation
-    x_obs = torch.tensor(worker(theta=[1.0, 1.0]), dtype=torch.float32)
-    theta_train = theta_samples[1:]
-    x_train = x_tensor[1:]
-
-    print("Starting SBI training...")
-    density_estimator = inference.append_simulations(theta_train, x_train).train()
-    posterior = inference.build_posterior(density_estimator)
-    print("SBI training complete.\n")
-
-    samples = posterior.sample((n_samples,), x=x_obs)
-    if use_bnt:
-        np.save("data/samples_bnt.npy", samples)
-        np.save("data/x_obs_bnt.npy", x_obs)
-    else:
-        np.save("data/samples.npy", samples)
-        np.save("data/x_obs.npy", x_obs)
-
-    # Subset training
-    print("Starting SBI training with only 100 simulations...")
-    inference_100 = sbi_inference.SNPE(prior=prior, density_estimator="maf")
-    density_estimator_100 = inference_100.append_simulations(theta_train[:5000], x_train[:5000]).train()
-    posterior_100 = inference_100.build_posterior(density_estimator_100)
-    samples_100 = posterior_100.sample((n_samples,), x=x_obs)
-
-    # GetDist plot
-    param_names = ["alpha", "beta"]
-    g_all = MCSamples(samples=samples.numpy(), names=param_names, labels=param_names)
-    g_100 = MCSamples(samples=samples_100.numpy(), names=param_names, labels=param_names)
-
-    gplt = plots.get_subplot_plotter()
-    gplt.triangle_plot([g_all, g_100], filled=True, legend_labels=["All", "Subset"])
-    if use_bnt:
-        gplt.export("data/posterior_comparison_bnt.png")
-    else:
-        gplt.export("data/posterior_comparison.png")
-
-    print("Saved triangle plot to data/posterior_comparison.png")
+        np.save("data/samples_sequential.npy", final_samples)
+        np.save("data/x_obs_sequential.npy", x_obs)
 
 
 if __name__ == "__main__":
     import argparse
-    parser = argparse.ArgumentParser(description="Run SBI with or without BNT transform.")
-    parser.add_argument("--use_bnt", action="store_true", help="Apply BNT transform if set.")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--use_bnt", action="store_true")
     args = parser.parse_args()
     use_bnt = args.use_bnt
     main()
