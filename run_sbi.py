@@ -1,5 +1,4 @@
 import multiprocessing
-from multiprocessing import TimeoutError
 import numpy as np
 from functools import partial
 from bnt_smooth import ProcessMaps
@@ -49,11 +48,10 @@ nside = 512
 l_max = 1500
 nslices = 15
 nbins = 5
-n_samples = 500
+n_samples = 5000
 n_processes = 10
-n_rounds = 5
-n_simulations_per_round = 100
-timeout = 180 # timeout in sec
+n_rounds = 10
+n_simulations_per_round = 500
 
 z = np.linspace(0.01, 2.5, 500)
 nz_list, _ = make_equal_ngal_bins(parent_nz, z, nbins=nbins)
@@ -109,62 +107,25 @@ def main():
         theta_np = theta_round.numpy()
 
         # Simulate
-        x_round = []
-        theta_valid = []
-        print("Running simulations with individual timeouts...")
-
-        # Fiducial simulation (alpha=1.0, beta=1.0)
-        print("Computing fiducial observation (x_obs)...")
-        x_obs = torch.tensor(worker([1.0, 1.0]), dtype=torch.float32)
-
         with multiprocessing.Pool(processes=n_processes) as pool:
-            results = [pool.apply_async(worker, (theta,)) for theta in theta_np]
+            x_round = pool.map(worker, theta_np)
 
-            for i, (theta, result) in enumerate(zip(theta_np, results)):
-                try:
-                    data_vector = result.get(timeout=timeout)  # 3 minutes per simulation
-                    x_round.append(data_vector)
-                    theta_valid.append(theta)
-                except TimeoutError:
-                    print(f"[Warning] Simulation {i} with theta={theta} timed out and was skipped.")
-                except Exception as e:
-                    print(f"[Error] Simulation {i} with theta={theta} failed: {e}")
+        # Append to all data
+        theta_all.append(theta_round)
+        x_all.append(torch.tensor(x_round, dtype=torch.float32))
 
-        # Filter valid results (drop any failed ones)
-        valid_pairs = [(theta, x) for theta, x in zip(theta_round, x_round) if x is not None]
-
-        if len(valid_pairs) == 0:
-            print(f"[Round {round_idx+1}] Warning: no valid simulations, skipping training.")
-            continue
-
-        # Split valid thetas and xs
-        theta_valid = torch.stack([torch.tensor(pair[0], dtype=torch.float32) for pair in valid_pairs])
-        x_valid = torch.stack([torch.tensor(pair[1], dtype=torch.float32) for pair in valid_pairs])
-
-        # Append to full training set
-        theta_all.append(theta_valid)
-        x_all.append(x_valid)
-
-        # Concatenate all so far
         theta_concat = torch.cat(theta_all)
         x_concat = torch.cat(x_all)
 
-        # Train and build posterior
+        # Train
         density_estimator = inference.append_simulations(theta_concat, x_concat).train()
         posterior = inference.build_posterior(density_estimator)
 
-        # Evaluate posterior at fiducial observation
+        # Save posterior sample at fiducial point
+        x_obs = torch.tensor(worker([1.0, 1.0]), dtype=torch.float32)
         samples = posterior.sample((n_samples,), x=x_obs)
 
-        # Save concatenated data so far
-        prefix = "bnt_" if use_bnt else "nobnt_"
-        theta_path = f"data/{prefix}theta_all_round{round_idx+1}.pt"
-        x_path = f"data/{prefix}x_all_round{round_idx+1}.pt"
-        torch.save(theta_concat, theta_path)
-        torch.save(x_concat, x_path)
-        print(f"Saved simulation data: {theta_path}, {x_path}")
-
-        # Save triangle plot
+        # Plot
         param_names = ["alpha", "beta"]
         g = MCSamples(samples=samples.numpy(), names=param_names, labels=param_names)
 
