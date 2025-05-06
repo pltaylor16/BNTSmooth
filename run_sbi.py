@@ -126,8 +126,8 @@ def main():
         density_estimator = inference.append_simulations(theta_concat, x_concat).train()
         posterior = inference.build_posterior(density_estimator)
 
-        # Save posterior sample at fiducial point
-        x_obs = torch.tensor(worker([1.0, 1.0]), dtype=torch.float32)
+        #sample from the posterior
+        samples = posterior.sample((n_samples,), x=x_obs)
 
         # Plot
         param_names = ["alpha", "beta"]
