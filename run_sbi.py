@@ -51,7 +51,7 @@ nbins = 5
 n_samples = 5000
 n_processes = 10
 n_rounds = 5
-n_simulations_per_round = 100
+n_simulations_per_round = 20
 
 z = np.linspace(0.01, 2.5, 500)
 nz_list, _ = make_equal_ngal_bins(parent_nz, z, nbins=nbins)
@@ -115,30 +115,32 @@ def main():
         with multiprocessing.Pool(processes=n_processes) as pool:
             x_round = pool.map(worker, theta_np)
 
-        # Append to all data
-        theta_all.append(theta_round)
-        x_all.append(torch.tensor(x_round, dtype=torch.float32))
+        # Do the rest of the computation as one task to avoid hang
+        with multiprocessing.Pool(1) as pool:
+            # Append to all data
+            theta_all.append(theta_round)
+            x_all.append(torch.tensor(x_round, dtype=torch.float32))
 
-        theta_concat = torch.cat(theta_all)
-        x_concat = torch.cat(x_all)
+            theta_concat = torch.cat(theta_all)
+            x_concat = torch.cat(x_all)
 
-        # Train
-        density_estimator = inference.append_simulations(theta_concat, x_concat).train()
-        posterior = inference.build_posterior(density_estimator)
+            # Train
+            density_estimator = inference.append_simulations(theta_concat, x_concat).train()
+            posterior = inference.build_posterior(density_estimator)
 
-        #sample from the posterior
-        samples = posterior.sample((n_samples,), x=x_obs)
+            #sample from the posterior
+            samples = posterior.sample((n_samples,), x=x_obs)
 
-        # Plot
-        param_names = ["alpha", "beta"]
-        g = MCSamples(samples=samples.numpy(), names=param_names, labels=param_names)
+            # Plot
+            param_names = ["alpha", "beta"]
+            g = MCSamples(samples=samples.numpy(), names=param_names, labels=param_names)
 
-        gplt = plots.get_subplot_plotter()
-        gplt.triangle_plot([g], filled=True)
+            gplt = plots.get_subplot_plotter()
+            gplt.triangle_plot([g], filled=True)
 
-        fname = f"data/posterior_sequential_bnt_round{round_idx+1}.png" if use_bnt else f"data/posterior_sequential_round{round_idx+1}.png"
-        gplt.export(fname)
-        print(f"Saved: {fname}")
+            fname = f"data/posterior_sequential_bnt_round{round_idx+1}.png" if use_bnt else f"data/posterior_sequential_round{round_idx+1}.png"
+            gplt.export(fname)
+            print(f"Saved: {fname}")
 
 
 if __name__ == "__main__":
