@@ -156,8 +156,9 @@ def main():
         samples = posterior.sample((n_samples,), x=x_obs)
 
         # Save concatenated data so far
-        theta_path = f"data/theta_all_round{round_idx+1}.pt"
-        x_path = f"data/x_all_round{round_idx+1}.pt"
+        prefix = "bnt_" if use_bnt else "nobnt_"
+        theta_path = f"data/{prefix}theta_all_round{round_idx+1}.pt"
+        x_path = f"data/{prefix}x_all_round{round_idx+1}.pt"
         torch.save(theta_concat, theta_path)
         torch.save(x_concat, x_path)
         print(f"Saved simulation data: {theta_path}, {x_path}")
