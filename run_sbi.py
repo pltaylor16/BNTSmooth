@@ -44,11 +44,11 @@ def make_equal_ngal_bins(nz_func, z_grid, nbins, sigma_z0=0.05):
 
 
 # --- Simulation settings ---
-nside = 512
-l_max = 1500
-nslices = 15
+nside = 32
+l_max = 30
+nslices = 5
 n_rounds = 5
-n_simulations_per_round = 100
+n_simulations_per_round = 10
 
 nbins = 5
 n_samples = 5000
@@ -129,7 +129,7 @@ def main():
         with multiprocessing.Pool(processes=n_processes) as pool:
             x_round = pool.map(worker, theta_np)
 
-        theta_concat = torch.cat(theta_round)
+        theta_concat = theta_round
         x_concat = torch.cat(x_round)
 
         with multiprocessing.Pool(1) as pool:
