@@ -89,7 +89,7 @@ def worker(theta):
 
 
 def train_density_estimator(theta, x, prior, x_obs, n_samples):
-    inference = sbi_inference.SNPE(prior=prior, density_estimator="maf")
+    inference = sbi_inference.SNRE_B(prior=prior)
     density_estimator = inference.append_simulations(theta, x).train()
     posterior = inference.build_posterior(density_estimator)
     samples = posterior.sample((n_samples,), x=x_obs)
@@ -100,8 +100,6 @@ def main():
     prior_min = torch.tensor([0.5, 0.5])  # alpha, beta
     prior_max = torch.tensor([1.5, 1.5])
     prior = sbi_utils.BoxUniform(prior_min, prior_max)
-
-    inference = sbi_inference.SNPE(prior=prior, density_estimator="maf")
 
     theta_all = []
     x_all = []
