@@ -598,6 +598,7 @@ class ProcessMaps(WeakLensingSim):
         return smoothed_maps
 
 
+
     def smooth_kappa_map_by_single_physical_scale(self, physical_scale_mpc, z_arr, nz_arr, kappa_map):
         """
         Smooth a single κ map using a physical scale and a lensing kernel computed from n(z).
@@ -642,6 +643,9 @@ class ProcessMaps(WeakLensingSim):
 
 
         
+
+
+
 
 
 
