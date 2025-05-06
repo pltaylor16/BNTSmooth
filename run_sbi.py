@@ -44,11 +44,11 @@ def make_equal_ngal_bins(nz_func, z_grid, nbins, sigma_z0=0.05):
 
 
 # --- Simulation settings ---
-nside = 32
-l_max = 30
-nslices = 5
-n_rounds = 5
-n_simulations_per_round = 10
+nside = 512
+l_max = 1500
+nslices = 15
+n_rounds = 8
+n_simulations_per_round = 100
 
 nbins = 5
 n_samples = 5000
