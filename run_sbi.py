@@ -97,6 +97,10 @@ def main():
     theta_all = []
     x_all = []
 
+    # Fiducial simulation (alpha=1.0, beta=1.0)
+    print("Computing fiducial observation (x_obs)...")
+    x_obs = torch.tensor(worker([1.0, 1.0]), dtype=torch.float32)
+
     for round_idx in range(n_rounds):
         print(f"\n--- Starting round {round_idx + 1} ---")
 
@@ -111,10 +115,6 @@ def main():
         x_round = []
         theta_valid = []
         print("Running simulations with individual timeouts...")
-
-        # Fiducial simulation (alpha=1.0, beta=1.0)
-        print("Computing fiducial observation (x_obs)...")
-        x_obs = torch.tensor(worker([1.0, 1.0]), dtype=torch.float32)
 
         with concurrent.futures.ProcessPoolExecutor(max_workers=n_processes) as executor:
             futures = {executor.submit(worker, theta): theta for theta in theta_np}
