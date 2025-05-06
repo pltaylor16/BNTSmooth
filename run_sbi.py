@@ -102,14 +102,17 @@ def main():
     x_obs = torch.tensor(x_obs_list[0], dtype=torch.float32)
 
     for round_idx in range(n_rounds):
-        print(f"\n--- Starting round {round_idx + 1} ---")
 
-        # Sample theta
-        if round_idx == 0:
-            theta_round = prior.sample((n_simulations_per_round,))
-        else:
-            theta_round = posterior.sample((n_simulations_per_round,), x=x_obs)
-        theta_np = theta_round.numpy()
+        #just put everyting in multiprocessing to play it safe
+        with multiprocessing.Pool(1) as pool:
+            print(f"\n--- Starting round {round_idx + 1} ---")
+
+            # Sample theta
+            if round_idx == 0:
+                theta_round = prior.sample((n_simulations_per_round,))
+            else:
+                theta_round = posterior.sample((n_simulations_per_round,), x=x_obs)
+            theta_np = theta_round.numpy()
 
         # Simulate
         with multiprocessing.Pool(processes=n_processes) as pool:
