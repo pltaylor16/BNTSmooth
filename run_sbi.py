@@ -47,6 +47,10 @@ def make_equal_ngal_bins(nz_func, z_grid, nbins, sigma_z0=0.05):
 nside = 512
 l_max = 1500
 nslices = 15
+#nside = 32
+#l_max = 30
+#nslices = 5
+
 nbins = 5
 n_samples = 5000
 n_processes = 10
