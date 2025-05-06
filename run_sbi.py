@@ -47,7 +47,7 @@ def make_equal_ngal_bins(nz_func, z_grid, nbins, sigma_z0=0.05):
 nside = 512
 l_max = 1500
 nslices = 15
-n_rounds = 8
+n_rounds = 5
 n_simulations_per_round = 100
 
 nbins = 5
@@ -129,12 +129,8 @@ def main():
         with multiprocessing.Pool(processes=n_processes) as pool:
             x_round = pool.map(worker, theta_np)
 
-        # Append to all data
-        theta_all.append(theta_round)
-        x_all.append(torch.tensor(x_round, dtype=torch.float32))
-
-        theta_concat = torch.cat(theta_all)
-        x_concat = torch.cat(x_all)
+        theta_concat = torch.cat(theta_round)
+        x_concat = torch.cat(x_round)
 
         with multiprocessing.Pool(1) as pool:
             results = pool.starmap(
