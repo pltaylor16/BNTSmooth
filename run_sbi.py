@@ -61,9 +61,10 @@ sigma_eps_list = [0.26] * nbins
 baryon_feedback = 7.
 
 
-def worker(theta):
+def worker(theta, use_bnt=False):
     alpha, beta = float(theta[0]), float(theta[1])
     print(f"Running simulation with alpha = {alpha:.3f}, beta = {beta:.3f}")
+
     sim = ProcessMaps(
         z_array=z,
         nz_list=nz_list,
@@ -77,6 +78,7 @@ def worker(theta):
         nside=nside,
         nslices=nslices
     )
+
     kappa_maps = sim.generate_noisy_kappa_maps()
     if use_bnt:
         kappa_maps = sim.bnt_transform_kappa_maps(kappa_maps)
@@ -84,47 +86,48 @@ def worker(theta):
 
 
 def main():
+    from functools import partial
+
+    # --- SBI settings ---
     prior_min = torch.tensor([0.5, 0.5])  # alpha, beta
     prior_max = torch.tensor([1.5, 1.5])
     prior = sbi_utils.BoxUniform(prior_min, prior_max)
 
     inference = sbi_inference.SNPE(prior=prior, density_estimator="maf")
-    proposal = prior
+    all_theta = []
+    all_x = []
 
-    x_obs = torch.tensor(worker([1.0, 1.0]), dtype=torch.float32)
+    for round_idx in range(n_rounds):
+        print(f"\n--- Starting round {round_idx + 1} ---")
 
-    for r in range(n_rounds):
-        print(f"\n--- Round {r+1}/{n_rounds} ---")
-        theta = proposal.sample((n_simulations_per_round,))
-        theta_np = theta.numpy()
+        # Sample θ
+        theta_round = prior.sample((simulations_per_round,))
+        theta_np = theta_round.numpy()
+        all_theta.append(theta_round)
 
+        # Run simulations in parallel
+        worker_with_flag = partial(worker, use_bnt=use_bnt)
         with multiprocessing.Pool(processes=n_processes) as pool:
-            x_data = pool.map(worker, theta_np)
+            x_data = pool.map(worker_with_flag, theta_np)
+        all_x.append(torch.tensor(x_data, dtype=torch.float32))
 
-        x_tensor = torch.tensor(x_data, dtype=torch.float32)
-        inference = inference.append_simulations(theta, x_tensor, proposal=proposal).train()
-        posterior = inference.build_posterior()
-        proposal = posterior
+        # Append and train
+        inference = inference.append_simulations(torch.cat(all_theta), torch.cat(all_x))
+        density_estimator = inference.train()
+        posterior = inference.build_posterior(density_estimator)
 
-        # Plot current posterior
-        samples = posterior.sample((n_samples,), x=x_obs)
-        g = MCSamples(samples=samples.numpy(), names=["alpha", "beta"], labels=["alpha", "beta"])
+        # Save posterior samples and triangle plot
+        x_obs = torch.tensor(worker([1.0, 1.0], use_bnt=use_bnt), dtype=torch.float32)
+        samples = posterior.sample((n_samples,), x=x_obs).numpy()
+
+        np.save(f"data/samples_round{round_idx+1}_{'bnt' if use_bnt else 'nobnt'}.npy", samples)
+
+        g = MCSamples(samples=samples, names=["alpha", "beta"], labels=["alpha", "beta"])
         gplt = plots.get_subplot_plotter()
         gplt.triangle_plot([g], filled=True)
-
-        suffix = "_bnt" if use_bnt else ""
-        output_path = f"data/posterior_sequential_round{r+1}{suffix}.png"
-        gplt.export(output_path)
-        print(f"Saved {output_path}")
-
-    # Save final posterior
-    final_samples = posterior.sample((n_samples,), x=x_obs)
-    if use_bnt:
-        np.save("data/samples_sequential_bnt.npy", final_samples)
-        np.save("data/x_obs_sequential_bnt.npy", x_obs)
-    else:
-        np.save("data/samples_sequential.npy", final_samples)
-        np.save("data/x_obs_sequential.npy", x_obs)
+        fname = f"data/posterior_sequential_round{round_idx+1}_{'bnt' if use_bnt else 'nobnt'}.png"
+        gplt.export(fname)
+        print(f"Saved {fname}")
 
 
 if __name__ == "__main__":
