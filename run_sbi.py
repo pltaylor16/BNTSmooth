@@ -99,7 +99,7 @@ def train_density_estimator(theta, x, prior, x_obs, n_samples):
     )
 
     neural_posterior = posterior_nn(
-        model="maf", embedding_net=embedding_net, hidden_features=10, num_transforms=2
+        model="mdn", embedding_net=embedding_net
         )
 
     inference = SNPE(
