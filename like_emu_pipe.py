@@ -174,23 +174,20 @@ def train_emulator(theta_train, x_train, n_epochs=1000, lr=1e-3, patience=20):
 
 
 # --- Log-likelihood using emulator ---
-def log_likelihood(theta):
-    theta_tensor = torch.tensor(theta, dtype=torch.float32).unsqueeze(0)
-    with torch.no_grad():
-        pred = model(theta_tensor).numpy().flatten()
-    delta = x_obs.numpy() - pred
-    return -0.5 * delta @ inv_cov @ delta
+class LogPosteriorEvaluator:
+    def __init__(self, model, x_obs, inv_cov):
+        self.model = model
+        self.x_obs = x_obs
+        self.inv_cov = inv_cov
 
-def log_prior(theta):
-    if 0.5 <= theta[0] <= 1.5 and 0.5 <= theta[1] <= 1.5:
-        return 0.0
-    return -np.inf
-
-def log_posterior(theta):
-    lp = log_prior(theta)
-    if not np.isfinite(lp):
-        return -np.inf
-    return lp + log_likelihood(theta)
+    def __call__(self, theta):
+        if not (0.5 <= theta[0] <= 1.5 and 0.5 <= theta[1] <= 1.5):
+            return -np.inf
+        theta_tensor = torch.tensor(theta, dtype=torch.float32).unsqueeze(0)
+        with torch.no_grad():
+            pred = self.model(theta_tensor).numpy().flatten()
+        delta = self.x_obs.numpy() - pred
+        return -0.5 * delta @ self.inv_cov @ delta
 
 
 def main():
@@ -257,7 +254,8 @@ def main():
             initial_pos = [1.0, 1.0] + 1e-2 * np.random.randn(nwalkers, ndim)
 
             print("Running MCMC...")
-            sampler = emcee.EnsembleSampler(nwalkers, ndim, log_posterior)
+            logpost = LogPosteriorEvaluator(model, x_obs, inv_cov)
+            sampler = emcee.EnsembleSampler(nwalkers, ndim, logpost)
             sampler.run_mcmc(initial_pos, nsteps, progress=True)
 
             posterior_samples = sampler.get_chain(discard=500, thin=10, flat=True)
