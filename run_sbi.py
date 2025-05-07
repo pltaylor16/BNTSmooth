@@ -2,13 +2,13 @@ import multiprocessing
 import numpy as np
 from functools import partial
 from bnt_smooth import ProcessMaps
-from sbi import utils as sbi_utils
 from sbi import inference as sbi_inference
 import torch
 from getdist import MCSamples, plots
 import torch.nn as nn
 from sbi.inference import SNPE
-from sbi.utils import posterior_nn
+from sbi import utils
+
 
 def parent_nz(z):
     z_euc = 0.9 / 2 ** 0.5
@@ -98,7 +98,7 @@ def train_density_estimator(theta, x, prior, x_obs, n_samples):
         nn.ReLU(),
     )
 
-    neural_posterior = posterior_nn(
+    neural_posterior = utils.posterior_nn(
         model="mdn", embedding_net=embedding_net
         )
 
