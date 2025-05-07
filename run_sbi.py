@@ -145,7 +145,7 @@ def main():
         else:
             sample_idx = np.random.choice(len(samples), size=n_simulations_per_round[round_idx], replace=False)
             theta_round = samples[sample_idx]
-                theta_np = theta_round.numpy()
+        theta_np = theta_round.numpy()
 
         # Simulate
         with multiprocessing.Pool(processes=n_processes) as pool:
