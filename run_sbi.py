@@ -92,7 +92,7 @@ def worker(theta):
     return data_vector
 
 
-def train_density_estimator(theta, x, prior, proposal, x_obs, n_samples):
+def train_density_estimator(posteriors, theta, x, prior, proposal, x_obs, n_samples):
     import torch.nn as nn
 
     embedding_net = nn.Sequential(
@@ -111,8 +111,10 @@ def train_density_estimator(theta, x, prior, proposal, x_obs, n_samples):
 
     density_estimator = inference.append_simulations(theta, x).train()
     posterior = inference.build_posterior(density_estimator)
+    posteriors.append(posterior)
+
     samples = posterior.sample((n_samples,), x=x_obs)
-    return posterior, samples
+    return posteriors, samples
 
 
 
@@ -131,6 +133,7 @@ def main():
     x_obs = torch.tensor(x_obs_list[0], dtype=torch.float32)
 
     proposal = prior
+    posteriors = []
 
     for round_idx in range(n_rounds):
 
@@ -165,7 +168,7 @@ def main():
                 [(theta_concat, x_concat)]
             )
             posterior, samples = results[0]
-            proposal = posterior  # Update proposal
+            proposal = posterior.set_default(x_obs)  # Update proposal
 
         # Plot
         param_names = ["alpha", "beta"]
@@ -187,7 +190,7 @@ if __name__ == "__main__":
     use_bnt = args.use_bnt
     main()
 
-    
+
 
 
 
