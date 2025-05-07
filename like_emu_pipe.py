@@ -51,8 +51,8 @@ l_max = 16
 nslices = 5
 n_train_per_round = 10
 n_rounds = 3
-n_cov_sim = 100
-use_bnt = False
+n_cov_sim = 40
+
 
 #nside = 512
 #l_max = 1500
@@ -210,8 +210,14 @@ def main():
         x_fiducial = pool.map(worker, fiducial_thetas)
     x_fiducial = np.stack(x_fiducial)
     cov = np.cov(x_fiducial.T)
-    inv_cov = np.linalg.inv(cov)
 
+    # Anderson-Hartlap correction
+    n_sim = x_fiducial.shape[0]
+    p = x_fiducial.shape[1]
+    hartlap_factor = (n_sim - p - 2) / (n_sim - 1)
+    if hartlap_factor <= 0:
+        raise ValueError(f"Hartlap factor is non-positive: {hartlap_factor:.3f}. Increase number of simulations.")
+    inv_cov = hartlap_factor * np.linalg.inv(cov)
 
 
 
@@ -253,25 +259,32 @@ def main():
             nsteps = 3000
             initial_pos = [1.0, 1.0] + 1e-2 * np.random.randn(nwalkers, ndim)
 
+            bnt_tag = "bnt" if use_bnt else "nobnt"
+
             print("Running MCMC...")
             logpost = LogPosteriorEvaluator(model, x_obs, inv_cov)
             sampler = emcee.EnsembleSampler(nwalkers, ndim, logpost)
             sampler.run_mcmc(initial_pos, nsteps, progress=True)
 
             posterior_samples = sampler.get_chain(discard=500, thin=10, flat=True)
-            np.save(f"data/emcee_samples_round{round_idx+1}.npy", posterior_samples)
-            print(f"Saved: data/emcee_samples_round{round_idx+1}.npy")
+            np.save(f"data/emcee_samples_{bnt_tag}_round{round_idx+1}.npy", posterior_samples)
+            print(f"Saved: data/emcee_samples_{bnt_tag}_round{round_idx+1}.npy")
 
             # Plot with GetDist
             names = ["alpha", "beta"]
             g = MCSamples(samples=posterior_samples, names=names, labels=names)
             gplt = plots.get_subplot_plotter()
             gplt.triangle_plot([g], filled=True)
-            fname = f"data/posterior_triangle_round{round_idx+1}.png"
+            fname = f"data/posterior_triangle_{bnt_tag}_round{round_idx+1}.png"
             gplt.export(fname)
             print(f"Saved triangle plot to {fname}")
 
 
 if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser(description="Run SBI with or without BNT transform.")
+    parser.add_argument("--use_bnt", action="store_true", help="Apply BNT transform if set.")
+    args = parser.parse_args()
+    use_bnt = args.use_bnt
     main()
 
