@@ -359,6 +359,30 @@ class WeakLensingSim:
         return noisy_kappa_maps
 
 
+    def generate_kappa_maps(self):
+        """
+        Run the pipeline to generate noisy κ maps:
+        1. Set cosmology
+        2. Generate matter maps
+        3. Compute κ signal maps
+        4. Generate noise maps
+        5. Add signal and noise
+        6. Return the noisy κ maps for each tomographic bin
+
+        Returns
+        -------
+        noisy_kappa_maps : list of ndarray
+            List of κ maps (signal + noise) for each tomographic bin.
+        """
+        self.set_cosmo()
+
+        gauss_matter_maps = self.generate_gauss_matter_fields_from_scratch()
+        matter_maps = self.make_skewed_delta_maps(gauss_matter_maps)
+        kappa_maps = self.compute_kappa_maps(matter_maps)
+
+        return kappa_maps
+
+
 class ProcessMaps(WeakLensingSim):
     """
     Subclass for processing κ maps after simulation.

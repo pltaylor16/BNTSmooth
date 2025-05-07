@@ -72,9 +72,9 @@ baryon_feedback = 7.
 seed = 1234
 
 
-def worker(theta):
+def worker(theta, add_noise=True):
     alpha, beta = float(theta[0]), float(theta[1])
-    print(f"Running simulation with alpha = {alpha:.3f}, beta = {beta:.3f}")
+    print(f"Running simulation with alpha = {alpha:.3f}, beta = {beta:.3f}, noise = {add_noise}")
 
     sim = ProcessMaps(
         z_array=z,
@@ -90,9 +90,14 @@ def worker(theta):
         nslices=nslices
     )
 
-    kappa_maps = sim.generate_noisy_kappa_maps()
+    if add_noise:
+        kappa_maps = sim.generate_noisy_kappa_maps()
+    else:
+        kappa_maps = sim.generate_kappa_maps()  # Or an equivalent method you implement
+
     if use_bnt:
         kappa_maps = sim.bnt_transform_kappa_maps(kappa_maps)
+
     data_vector = sim.compute_data_vector(kappa_maps)
     return data_vector
 
@@ -235,7 +240,8 @@ def main():
 
         # Simulate
         with multiprocessing.Pool(processes=n_processes) as pool:
-            x_train = pool.map(worker, theta_samples)
+            x_train = pool.starmap(worker, [(theta, False) for theta in theta_samples])
+
 
         theta_train = torch.tensor(theta_samples, dtype=torch.float32)
         x_train = torch.tensor(x_train, dtype=torch.float32)
