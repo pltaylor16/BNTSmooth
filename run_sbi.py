@@ -8,6 +8,7 @@ import torch
 from getdist import MCSamples, plots
 import torch.nn as nn
 from sbi.inference import SNPE
+from sbi.utile import posterior_nn
 
 def parent_nz(z):
     z_euc = 0.9 / 2 ** 0.5
@@ -97,10 +98,13 @@ def train_density_estimator(theta, x, prior, x_obs, n_samples):
         nn.ReLU(),
     )
 
+    neural_posterior = posterior_nn(
+        model="maf", embedding_net=embedding_net, hidden_features=10, num_transforms=2
+        )
+
     inference = SNPE(
         prior=prior,
-        density_estimator="mdn",
-        embedding_net=embedding_net
+        density_estimator=neural_posterior,
     )
 
     density_estimator = inference.append_simulations(theta, x).train()
