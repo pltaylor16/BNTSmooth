@@ -194,18 +194,18 @@ def log_posterior(theta):
 
 def main():
 
-	#generate mock data vector
+    #generate mock data vector
     with multiprocessing.Pool(1) as pool:
         x_obs_list = pool.map(worker, [[1.0, 1.0]])
     x_obs = torch.tensor(x_obs_list[0], dtype=torch.float32)
 
     #generate training data
-	prior_min = [0.5, 0.5]
-	prior_max = [1.5, 1.5]
+    prior_min = [0.5, 0.5]
+    prior_max = [1.5, 1.5]
 
 
 
-	# --- Covariance estimation ---
+    # --- Covariance estimation ---
     print("Running fiducial simulations for covariance...")
     fiducial_thetas = np.tile([[1.0, 1.0]], (n_cov_sim, 1))
     with multiprocessing.Pool(n_processes) as pool:
@@ -217,62 +217,62 @@ def main():
 
 
 
-	theta_train_all = []
-	x_train_all = []
+    theta_train_all = []
+    x_train_all = []
 
-	for round_idx in range(n_rounds):
-	    print(f"\n--- Starting round {round_idx+1} ---")
+    for round_idx in range(n_rounds):
+        print(f"\n--- Starting round {round_idx+1} ---")
 
-	    # Draw theta
-	    if round_idx == 0:
-	        theta_samples = np.random.uniform(low=prior_min, high=prior_max, size=(n_train_per_round, 2))
-	    else:
-	        sample_idx = np.random.choice(posterior_samples.shape[0], size=n_train_per_round, replace=False)
-	        theta_samples = posterior_samples[sample_idx]
+        # Draw theta
+        if round_idx == 0:
+            theta_samples = np.random.uniform(low=prior_min, high=prior_max, size=(n_train_per_round, 2))
+        else:
+            sample_idx = np.random.choice(posterior_samples.shape[0], size=n_train_per_round, replace=False)
+            theta_samples = posterior_samples[sample_idx]
 
-	    # Simulate
-	    with multiprocessing.Pool(processes=n_processes) as pool:
-	        x_train = pool.map(worker, theta_samples)
+        # Simulate
+        with multiprocessing.Pool(processes=n_processes) as pool:
+            x_train = pool.map(worker, theta_samples)
 
-	    theta_train = torch.tensor(theta_samples, dtype=torch.float32)
-	    x_train = torch.tensor(x_train, dtype=torch.float32)
+        theta_train = torch.tensor(theta_samples, dtype=torch.float32)
+        x_train = torch.tensor(x_train, dtype=torch.float32)
 
-	    # Accumulate data
-	    theta_train_all.append(theta_train)
-	    x_train_all.append(x_train)
+        # Accumulate data
+        theta_train_all.append(theta_train)
+        x_train_all.append(x_train)
 
-	    theta_concat = torch.cat(theta_train_all)
-	    x_concat = torch.cat(x_train_all)
+        theta_concat = torch.cat(theta_train_all)
+        x_concat = torch.cat(x_train_all)
 
-	    # Train emulator
-	    with multiprocessing.Pool(1) as pool:
-	    	model = train_emulator(theta_concat, x_concat)
-	    	torch.save(model.state_dict(), f"data/emulator_round{round_idx+1}.pt")
+        # Train emulator
+        with multiprocessing.Pool(1) as pool:
+            model = train_emulator(theta_concat, x_concat)
+            torch.save(model.state_dict(), f"data/emulator_round{round_idx+1}.pt")
 
-		    # MCMC
-		    ndim = 2
-		    nwalkers = 20
-		    nsteps = 3000
-		    initial_pos = [1.0, 1.0] + 1e-2 * np.random.randn(nwalkers, ndim)
+            # MCMC
+            ndim = 2
+            nwalkers = 20
+            nsteps = 3000
+            initial_pos = [1.0, 1.0] + 1e-2 * np.random.randn(nwalkers, ndim)
 
-		    print("Running MCMC...")
-		    sampler = emcee.EnsembleSampler(nwalkers, ndim, log_posterior)
-		    sampler.run_mcmc(initial_pos, nsteps, progress=True)
+            print("Running MCMC...")
+            sampler = emcee.EnsembleSampler(nwalkers, ndim, log_posterior)
+            sampler.run_mcmc(initial_pos, nsteps, progress=True)
 
-		    posterior_samples = sampler.get_chain(discard=500, thin=10, flat=True)
-		    np.save(f"data/emcee_samples_round{round_idx+1}.npy", posterior_samples)
-		    print(f"Saved: data/emcee_samples_round{round_idx+1}.npy")
+            posterior_samples = sampler.get_chain(discard=500, thin=10, flat=True)
+            np.save(f"data/emcee_samples_round{round_idx+1}.npy", posterior_samples)
+            print(f"Saved: data/emcee_samples_round{round_idx+1}.npy")
 
-		    # Plot with GetDist
-		    names = ["alpha", "beta"]
-		    g = MCSamples(samples=posterior_samples, names=names, labels=names)
-		    gplt = plots.get_subplot_plotter()
-		    gplt.triangle_plot([g], filled=True)
-		    fname = f"data/posterior_triangle_round{round_idx+1}.png"
-		    gplt.export(fname)
-		    print(f"Saved triangle plot to {fname}")
+            # Plot with GetDist
+            names = ["alpha", "beta"]
+            g = MCSamples(samples=posterior_samples, names=names, labels=names)
+            gplt = plots.get_subplot_plotter()
+            gplt.triangle_plot([g], filled=True)
+            fname = f"data/posterior_triangle_round{round_idx+1}.png"
+            gplt.export(fname)
+            print(f"Saved triangle plot to {fname}")
 
 
 if __name__ == "__main__":
-	main()
+    main()
 
