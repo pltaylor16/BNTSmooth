@@ -92,7 +92,7 @@ def worker(theta):
     return data_vector
 
 
-def train_density_estimator(theta, x, prior, x_obs, n_samples):
+def train_density_estimator(theta, x, prior, proposal, x_obs, n_samples):
     import torch.nn as nn
 
     embedding_net = nn.Sequential(
@@ -107,6 +107,7 @@ def train_density_estimator(theta, x, prior, x_obs, n_samples):
     inference = SNPE(
         prior=prior,
         density_estimator=neural_posterior,
+        proposal=proposal
     )
 
     density_estimator = inference.append_simulations(theta, x).train()
@@ -130,6 +131,8 @@ def main():
         x_obs_list = pool.map(worker, [[1.0, 1.0]])
     x_obs = torch.tensor(x_obs_list[0], dtype=torch.float32)
 
+    prposal = prior
+
     for round_idx in range(n_rounds):
 
         #just put everyting in multiprocessing to play it safe
@@ -137,27 +140,33 @@ def main():
             print(f"\n--- Starting round {round_idx + 1} ---")
 
             # Sample theta
-            if round_idx == 0:
-                theta_round = prior.sample((n_simulations_per_round[round_idx],))
-            else:
-                sample_idx = np.random.choice(len(samples), size=n_simulations_per_round[round_idx], replace=False)
-                theta_round = samples[sample_idx]
-            theta_np = theta_round.numpy()
+        if round_idx == 0:
+            theta_round = prior.sample((n_simulations_per_round[round_idx],))
+        else:
+            sample_idx = np.random.choice(len(samples), size=n_simulations_per_round[round_idx], replace=False)
+            theta_round = samples[sample_idx]
+                theta_np = theta_round.numpy()
 
         # Simulate
         with multiprocessing.Pool(processes=n_processes) as pool:
             x_round = pool.map(worker, theta_np)
 
-        theta_concat = theta_round
+
         x_round_tensors = [torch.tensor(x, dtype=torch.float32) for x in x_round]
-        x_concat = torch.stack(x_round_tensors)  # shape: [10, D]
+
+
+        theta_all.append(theta_round)
+        x_all.append(torch.stack(x_round_tensors))
+        theta_concat = torch.cat(theta_all)
+        x_concat = torch.cat(x_all)
 
         with multiprocessing.Pool(1) as pool:
             results = pool.starmap(
-                train_density_estimator,
-                [(theta_concat, x_concat, prior, x_obs, n_samples)]
+                partial(train_density_estimator, prior=prior, proposal=proposal, x_obs=x_obs, n_samples=n_samples),
+                [(theta_concat, x_concat)]
             )
             posterior, samples = results[0]
+            proposal = posterior  # Update proposal
 
         # Plot
         param_names = ["alpha", "beta"]
