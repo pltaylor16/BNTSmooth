@@ -8,7 +8,7 @@ import torch
 from getdist import MCSamples, plots
 import torch.nn as nn
 from sbi.inference import SNPE
-from sbi import nerual_nets as sbi_nerual_nets
+from sbi import neural_nets as sbi_neural_nets
 
 
 
