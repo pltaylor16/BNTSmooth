@@ -8,7 +8,7 @@ import torch
 from getdist import MCSamples, plots
 import torch.nn as nn
 from sbi.inference import SNPE
-from sbi.utile import posterior_nn
+from sbi.utils import posterior_nn
 
 def parent_nz(z):
     z_euc = 0.9 / 2 ** 0.5
