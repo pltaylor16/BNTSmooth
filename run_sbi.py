@@ -106,8 +106,7 @@ def train_density_estimator(theta, x, prior, proposal, x_obs, n_samples):
 
     inference = SNPE(
         prior=prior,
-        density_estimator=neural_posterior,
-        proposal=proposal
+        density_estimator=neural_posterior
     )
 
     density_estimator = inference.append_simulations(theta, x).train()
@@ -131,7 +130,7 @@ def main():
         x_obs_list = pool.map(worker, [[1.0, 1.0]])
     x_obs = torch.tensor(x_obs_list[0], dtype=torch.float32)
 
-    prposal = prior
+    proposal = prior
 
     for round_idx in range(n_rounds):
 
