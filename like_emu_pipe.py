@@ -46,9 +46,19 @@ def make_equal_ngal_bins(nz_func, z_grid, nbins, sigma_z0=0.05):
     return nz_bins, edges
 
 # --- Simulation settings ---
-nside = 512
-l_max = 1500
-nslices = 15
+nside = 16
+l_max = 16
+nslices = 5
+n_train_per_round = 10
+n_rounds = 3
+n_cov_sim = 10
+
+#nside = 512
+#l_max = 1500
+#nslices = 15
+#n_train_per_round = 200
+#n_rounds = 3
+#n_cov_sim = 200
 
 nbins = 5
 n_samples = 5000
@@ -192,20 +202,20 @@ def main():
     #generate training data
 	prior_min = [0.5, 0.5]
 	prior_max = [1.5, 1.5]
-	n_train = 200  
+
 
 
 	# --- Covariance estimation ---
     print("Running fiducial simulations for covariance...")
-    fiducial_thetas = np.tile([[1.0, 1.0]], (200, 1))
+    fiducial_thetas = np.tile([[1.0, 1.0]], (n_cov_sim, 1))
     with multiprocessing.Pool(n_processes) as pool:
         x_fiducial = pool.map(worker, fiducial_thetas)
     x_fiducial = np.stack(x_fiducial)
     cov = np.cov(x_fiducial.T)
     inv_cov = np.linalg.inv(cov)
 
-	n_rounds = 3
-	n_train_per_round = 200
+
+
 
 	theta_train_all = []
 	x_train_all = []
