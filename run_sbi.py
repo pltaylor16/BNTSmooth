@@ -8,6 +8,7 @@ import torch
 from getdist import MCSamples, plots
 import torch.nn as nn
 from sbi.inference import SNPE
+from sbi import nerual_nets as sbi_nerual_nets
 
 
 
@@ -99,8 +100,8 @@ def train_density_estimator(theta, x, prior, x_obs, n_samples):
         nn.ReLU(),
     )
 
-    neural_posterior = sbi_utils.posterior_nn(
-        model="mdn", embedding_net=embedding_net
+    neural_posterior = sbi_neural_nets.posterior_nn(
+        model="maf", embedding_net=embedding_net
         )
 
     inference = SNPE(
