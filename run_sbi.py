@@ -7,6 +7,7 @@ from sbi import inference as sbi_inference
 import torch
 from getdist import MCSamples, plots
 import torch.nn as nn
+from sbi.inference import SNPE
 
 def parent_nz(z):
     z_euc = 0.9 / 2 ** 0.5
@@ -96,7 +97,7 @@ def train_density_estimator(theta, x, prior, x_obs, n_samples):
         nn.ReLU(),
     )
 
-    inference = sbi_inference.SNPE(
+    inference = SNPE(
         prior=prior,
         density_estimator="mdn",
         embedding_net=embedding_net
