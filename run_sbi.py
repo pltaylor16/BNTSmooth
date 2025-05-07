@@ -165,7 +165,7 @@ def main():
                 [(theta_concat, x_concat)]
             )
             posterior, samples = results[0]
-            proposal = posterior.set_default(x_obs)  # Update proposal
+            proposal = posterior.set_default_x(x_obs)  # Update proposal
 
         # Plot
         param_names = ["alpha", "beta"]
