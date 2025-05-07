@@ -92,7 +92,7 @@ def worker(theta):
     return data_vector
 
 
-def train_density_estimator(posteriors, theta, x, prior, proposal, x_obs, n_samples):
+def train_density_estimator(theta, x, prior, proposal, x_obs, n_samples):
     import torch.nn as nn
 
     embedding_net = nn.Sequential(
@@ -109,12 +109,10 @@ def train_density_estimator(posteriors, theta, x, prior, proposal, x_obs, n_samp
         density_estimator=neural_posterior
     )
 
-    density_estimator = inference.append_simulations(theta, x).train()
+    density_estimator = inference.append_simulations(theta, x, proposal=proposal).train()
     posterior = inference.build_posterior(density_estimator)
-    posteriors.append(posterior)
-
     samples = posterior.sample((n_samples,), x=x_obs)
-    return posteriors, samples
+    return posterior, samples
 
 
 
@@ -133,7 +131,6 @@ def main():
     x_obs = torch.tensor(x_obs_list[0], dtype=torch.float32)
 
     proposal = prior
-    posteriors = []
 
     for round_idx in range(n_rounds):
 
