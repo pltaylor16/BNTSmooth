@@ -62,7 +62,7 @@ n_cov_sim = 200
 
 nbins = 5
 n_samples = 5000
-n_processes = 10
+n_processes = 20
 
 z = np.linspace(0.01, 2.5, 500)
 nz_list, _ = make_equal_ngal_bins(parent_nz, z, nbins=nbins)
