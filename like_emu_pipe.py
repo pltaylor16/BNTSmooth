@@ -52,6 +52,7 @@ nslices = 5
 n_train_per_round = 10
 n_rounds = 3
 n_cov_sim = 10
+use_bnt = False
 
 #nside = 512
 #l_max = 1500
