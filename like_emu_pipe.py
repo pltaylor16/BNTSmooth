@@ -46,23 +46,26 @@ def make_equal_ngal_bins(nz_func, z_grid, nbins, sigma_z0=0.05):
     return nz_bins, edges
 
 # --- Simulation settings ---
-#nside = 16
-#l_max = 16
-#nslices = 5
-#n_train_per_round = 10
-#n_rounds = 3
-#n_cov_sim = 40
-
-nside = 512
-l_max = 1500
-nslices = 15
-n_train_per_round = 500
+nside = 16
+l_max = 16
+nslices = 5
+n_train_per_round = 10
 n_rounds = 3
-n_cov_sim = 200
+n_cov_sim = 30
+n_processes = 10
+
+
+#nside = 512
+#l_max = 1500
+#nslices = 15
+#n_train_per_round = 500
+#n_rounds = 3
+#n_cov_sim = 200
+#n_processes = 20
 
 nbins = 5
 n_samples = 5000
-n_processes = 20
+
 
 z = np.linspace(0.01, 2.5, 500)
 nz_list, _ = make_equal_ngal_bins(parent_nz, z, nbins=nbins)
@@ -229,14 +232,15 @@ def main():
     x_train_all = []
 
     for round_idx in range(n_rounds):
-        print(f"\n--- Starting round {round_idx+1} ---")
+        with multiprocessing.Pool(1) as pool:
+            print(f"\n--- Starting round {round_idx+1} ---")
 
-        # Draw theta
-        if round_idx == 0:
-            theta_samples = np.random.uniform(low=prior_min, high=prior_max, size=(n_train_per_round, 2))
-        else:
-            sample_idx = np.random.choice(posterior_samples.shape[0], size=n_train_per_round, replace=False)
-            theta_samples = posterior_samples[sample_idx]
+            # Draw theta
+            if round_idx == 0:
+                theta_samples = np.random.uniform(low=prior_min, high=prior_max, size=(n_train_per_round, 2))
+            else:
+                sample_idx = np.random.choice(posterior_samples.shape[0], size=n_train_per_round, replace=False)
+                theta_samples = posterior_samples[sample_idx]
 
         # Simulate
         with multiprocessing.Pool(processes=n_processes) as pool:
@@ -264,7 +268,7 @@ def main():
             # MCMC
             ndim = 2
             nwalkers = 20
-            nsteps = 3000
+            nsteps = n_samples
             initial_pos = [1.0, 1.0] + 1e-2 * np.random.randn(nwalkers, ndim)
 
             bnt_tag = "bnt" if use_bnt else "nobnt"
