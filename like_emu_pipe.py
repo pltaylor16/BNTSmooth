@@ -3,8 +3,6 @@ import numpy as np
 from functools import partial
 from bnt_smooth import ProcessMaps
 import torch
-import torch.nn as nn
-from torch.utils.data import TensorDataset, DataLoader
 import os
 import emcee
 import pickle
