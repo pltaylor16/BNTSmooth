@@ -177,7 +177,6 @@ def train_emulator(theta_train, x_train, n_epochs=1000, lr=1e-3, patience=20):
 
     return model
 
-
 # --- Log-likelihood using emulator ---
 class LogPosteriorEvaluator:
     def __init__(self, model, x_obs, inv_cov):
@@ -198,6 +197,8 @@ class LogPosteriorEvaluator:
 def main():
     torch.set_num_threads(1)
 
+    bnt_tag = "bnt" if use_bnt else "nobnt"
+
     #generate mock data vector
     with multiprocessing.Pool(1) as pool:
         x_obs_list = pool.map(worker, [[1.0, 1.0]])
@@ -206,8 +207,6 @@ def main():
     #generate training data
     prior_min = [0.5, 0.5]
     prior_max = [1.5, 1.5]
-
-
 
     # --- Covariance estimation ---
     print("Running fiducial simulations for covariance...")
@@ -226,8 +225,6 @@ def main():
     if hartlap_factor <= 0:
         raise ValueError(f"Hartlap factor is non-positive: {hartlap_factor:.3f}. Increase number of simulations.")
     inv_cov = hartlap_factor * np.linalg.inv(cov)
-
-
 
     theta_train_all = []
     x_train_all = []
@@ -268,8 +265,6 @@ def main():
         nwalkers = 20
         nsteps = n_samples
         initial_pos = [1.0, 1.0] + 1e-2 * np.random.randn(nwalkers, ndim)
-
-        bnt_tag = "bnt" if use_bnt else "nobnt"
 
         print("Running MCMC...")
         logpost = LogPosteriorEvaluator(model, x_obs, inv_cov)
