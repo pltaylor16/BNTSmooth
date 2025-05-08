@@ -242,7 +242,7 @@ def main():
 
         # Simulate
         with multiprocessing.Pool(processes=n_processes) as pool:
-            x_train = pool.starmap(worker, [(theta) for theta in theta_samples])
+            x_train = pool.map(worker, theta_samples)
 
         #accumalate data
         theta_train = torch.tensor(theta_samples, dtype=torch.float32)
