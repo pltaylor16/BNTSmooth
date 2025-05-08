@@ -56,7 +56,7 @@ def make_equal_ngal_bins(nz_func, z_grid, nbins, sigma_z0=0.05):
 nside = 512
 l_max = 1500
 nslices = 15
-n_train_per_round = 200
+n_train_per_round = 500
 n_rounds = 3
 n_cov_sim = 200
 
@@ -93,7 +93,7 @@ def worker(theta, add_noise=True):
     if add_noise:
         kappa_maps = sim.generate_noisy_kappa_maps()
     else:
-        kappa_maps = sim.generate_kappa_maps()  # Or an equivalent method you implement
+        kappa_maps = sim.generate_kappa_maps()  
 
     if use_bnt:
         kappa_maps = sim.bnt_transform_kappa_maps(kappa_maps)
