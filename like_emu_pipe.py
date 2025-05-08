@@ -264,8 +264,9 @@ def main():
         x_concat = torch.cat(x_train_all)
 
         # Train emulator
-        model = train_emulator(theta_concat, x_concat)
-        torch.save(model.state_dict(), f"data/emulator_round{round_idx+1}.pt")
+        with multiprocessing.Pool(1) as pool:
+            model = train_emulator(theta_concat, x_concat)
+            torch.save(model.state_dict(), f"data/emulator_round{round_idx+1}.pt")
 
         print ('sim test 2')
         with multiprocessing.Pool(processes=n_processes) as pool:
