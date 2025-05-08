@@ -215,8 +215,6 @@ def main():
         x_fiducial = pool.map(worker, fiducial_thetas)
     x_fiducial = np.stack(x_fiducial)
     cov = np.cov(x_fiducial.T)
-    np.save(f"data/inv_cov_{bnt_tag}.npy", inv_cov)
-    print(f"Saved inverse covariance matrix to data/inv_cov_{bnt_tag}.npy")
 
     # Anderson-Hartlap correction
     n_sim = x_fiducial.shape[0]
@@ -225,6 +223,8 @@ def main():
     if hartlap_factor <= 0:
         raise ValueError(f"Hartlap factor is non-positive: {hartlap_factor:.3f}. Increase number of simulations.")
     inv_cov = hartlap_factor * np.linalg.inv(cov)
+    np.save(f"data/inv_cov_{bnt_tag}.npy", inv_cov)
+    print(f"Saved inverse covariance matrix to data/inv_cov_{bnt_tag}.npy")
 
     theta_train_all = []
     x_train_all = []
