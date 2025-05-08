@@ -46,22 +46,22 @@ def make_equal_ngal_bins(nz_func, z_grid, nbins, sigma_z0=0.05):
     return nz_bins, edges
 
 # --- Simulation settings ---
-#nside = 16
-#l_max = 16
-#nslices = 5
-#n_train_per_round = 10
-#n_rounds = 3
-#n_cov_sim = 30
-#n_processes = 10
-
-
-nside = 512
-l_max = 1500
-nslices = 15
-n_train_per_round = 1000
+nside = 16
+l_max = 16
+nslices = 5
+n_train_per_round = 10
 n_rounds = 3
-n_cov_sim = 200
-n_processes = 20
+n_cov_sim = 30
+n_processes = 10
+
+
+#nside = 512
+#l_max = 1500
+#nslices = 15
+#n_train_per_round = 1000
+#n_rounds = 3
+#n_cov_sim = 200
+#n_processes = 20
 
 nbins = 5
 n_samples = 5000
@@ -75,9 +75,9 @@ baryon_feedback = 7.
 seed = 1234
 
 
-def worker(theta, add_noise=True):
+def worker(theta):
     alpha, beta = float(theta[0]), float(theta[1])
-    print(f"Running simulation with alpha = {alpha:.3f}, beta = {beta:.3f}, noise = {add_noise}")
+    print(f"Running simulation with alpha = {alpha:.3f}, beta = {beta:.3f}")
 
     sim = ProcessMaps(
         z_array=z,
@@ -93,10 +93,8 @@ def worker(theta, add_noise=True):
         nslices=nslices
     )
 
-    if add_noise:
-        kappa_maps = sim.generate_noisy_kappa_maps()
-    else:
-        kappa_maps = sim.generate_kappa_maps()  
+
+    kappa_maps = sim.generate_kappa_maps()  
 
     if use_bnt:
         kappa_maps = sim.bnt_transform_kappa_maps(kappa_maps)
@@ -218,6 +216,8 @@ def main():
         x_fiducial = pool.map(worker, fiducial_thetas)
     x_fiducial = np.stack(x_fiducial)
     cov = np.cov(x_fiducial.T)
+    np.save(f"data/inv_cov_{bnt_tag}.npy", inv_cov)
+    print(f"Saved inverse covariance matrix to data/inv_cov_{bnt_tag}.npy")
 
     # Anderson-Hartlap correction
     n_sim = x_fiducial.shape[0]
@@ -245,7 +245,7 @@ def main():
 
         # Simulate
         with multiprocessing.Pool(processes=n_processes) as pool:
-            x_train = pool.starmap(worker, [(theta, False) for theta in theta_samples])
+            x_train = pool.starmap(worker, [(theta) for theta in theta_samples])
 
         #accumalate data
         theta_train = torch.tensor(theta_samples, dtype=torch.float32)
@@ -261,7 +261,7 @@ def main():
         # Train emulator
         with multiprocessing.Pool(1) as pool:
             model = train_emulator(theta_concat, x_concat)
-            torch.save(model.state_dict(), f"data/emulator_round{round_idx+1}.pt")
+            torch.save(model.state_dict(), f"data/emulator_{bnt_tag}_round{round_idx+1}.pt")
             
         # MCMC
         ndim = 2
