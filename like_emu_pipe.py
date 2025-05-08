@@ -246,18 +246,18 @@ def main():
         #inference
         with multiprocessing.Pool(1) as pool:
 
-	        #accumalate data
-	       	theta_train = torch.tensor(theta_samples, dtype=torch.float32)
-	        x_train = torch.tensor(x_train, dtype=torch.float32)
+            #accumalate data
+            theta_train = torch.tensor(theta_samples, dtype=torch.float32)
+            x_train = torch.tensor(x_train, dtype=torch.float32)
 
-	        # Accumulate data
-	        theta_train_all.append(theta_train)
-	        x_train_all.append(x_train)
+            # Accumulate data
+            theta_train_all.append(theta_train)
+            x_train_all.append(x_train)
 
-	        theta_concat = torch.cat(theta_train_all)
-	        x_concat = torch.cat(x_train_all)
+            theta_concat = torch.cat(theta_train_all)
+            x_concat = torch.cat(x_train_all)
 
-	        # Train emulator
+            # Train emulator
             model = train_emulator(theta_concat, x_concat)
             torch.save(model.state_dict(), f"data/emulator_round{round_idx+1}.pt")
 
