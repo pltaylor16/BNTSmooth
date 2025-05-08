@@ -247,49 +247,55 @@ def main():
             x_train = pool.starmap(worker, [(theta, False) for theta in theta_samples])
 
 
-        #inference
-        with multiprocessing.Pool(1) as pool:
 
-            #accumalate data
-            theta_train = torch.tensor(theta_samples, dtype=torch.float32)
-            x_train = torch.tensor(x_train, dtype=torch.float32)
+        #accumalate data
+        theta_train = torch.tensor(theta_samples, dtype=torch.float32)
+        x_train = torch.tensor(x_train, dtype=torch.float32)
 
-            # Accumulate data
-            theta_train_all.append(theta_train)
-            x_train_all.append(x_train)
+        print ('sim test 1')
+        with multiprocessing.Pool(processes=n_processes) as pool:
+            x_train = pool.starmap(worker, [(theta, False) for theta in theta_samples])
 
-            theta_concat = torch.cat(theta_train_all)
-            x_concat = torch.cat(x_train_all)
+        # Accumulate data
+        theta_train_all.append(theta_train)
+        x_train_all.append(x_train)
 
-            # Train emulator
-            model = train_emulator(theta_concat, x_concat)
-            torch.save(model.state_dict(), f"data/emulator_round{round_idx+1}.pt")
+        theta_concat = torch.cat(theta_train_all)
+        x_concat = torch.cat(x_train_all)
 
-            # MCMC
-            ndim = 2
-            nwalkers = 20
-            nsteps = n_samples
-            initial_pos = [1.0, 1.0] + 1e-2 * np.random.randn(nwalkers, ndim)
+        # Train emulator
+        model = train_emulator(theta_concat, x_concat)
+        torch.save(model.state_dict(), f"data/emulator_round{round_idx+1}.pt")
 
-            bnt_tag = "bnt" if use_bnt else "nobnt"
+        print ('sim test 2')
+        with multiprocessing.Pool(processes=n_processes) as pool:
+            x_train = pool.starmap(worker, [(theta, False) for theta in theta_samples])
 
-            print("Running MCMC...")
-            logpost = LogPosteriorEvaluator(model, x_obs, inv_cov)
-            sampler = emcee.EnsembleSampler(nwalkers, ndim, logpost)
-            sampler.run_mcmc(initial_pos, nsteps, progress=True)
+        # MCMC
+        ndim = 2
+        nwalkers = 20
+        nsteps = n_samples
+        initial_pos = [1.0, 1.0] + 1e-2 * np.random.randn(nwalkers, ndim)
 
-            posterior_samples = sampler.get_chain(discard=500, thin=10, flat=True)
-            np.save(f"data/emcee_samples_{bnt_tag}_round{round_idx+1}.npy", posterior_samples)
-            print(f"Saved: data/emcee_samples_{bnt_tag}_round{round_idx+1}.npy")
+        bnt_tag = "bnt" if use_bnt else "nobnt"
 
-            # Plot with GetDist
-            names = ["alpha", "beta"]
-            g = MCSamples(samples=posterior_samples, names=names, labels=names)
-            gplt = plots.get_subplot_plotter()
-            gplt.triangle_plot([g], filled=True)
-            fname = f"data/posterior_triangle_{bnt_tag}_round{round_idx+1}.png"
-            gplt.export(fname)
-            print(f"Saved triangle plot to {fname}")
+        print("Running MCMC...")
+        logpost = LogPosteriorEvaluator(model, x_obs, inv_cov)
+        sampler = emcee.EnsembleSampler(nwalkers, ndim, logpost)
+        sampler.run_mcmc(initial_pos, nsteps, progress=True)
+
+        posterior_samples = sampler.get_chain(discard=500, thin=10, flat=True)
+        np.save(f"data/emcee_samples_{bnt_tag}_round{round_idx+1}.npy", posterior_samples)
+        print(f"Saved: data/emcee_samples_{bnt_tag}_round{round_idx+1}.npy")
+
+        # Plot with GetDist
+        names = ["alpha", "beta"]
+        g = MCSamples(samples=posterior_samples, names=names, labels=names)
+        gplt = plots.get_subplot_plotter()
+        gplt.triangle_plot([g], filled=True)
+        fname = f"data/posterior_triangle_{bnt_tag}_round{round_idx+1}.png"
+        gplt.export(fname)
+        print(f"Saved triangle plot to {fname}")
 
 
 if __name__ == "__main__":
