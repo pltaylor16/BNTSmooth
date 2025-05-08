@@ -94,7 +94,7 @@ def worker(theta):
     )
 
 
-    kappa_maps = sim.generate_kappa_maps()  
+    kappa_maps = sim.generate_noisy_kappa_maps()  
 
     if use_bnt:
         kappa_maps = sim.bnt_transform_kappa_maps(kappa_maps)
