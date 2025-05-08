@@ -198,6 +198,7 @@ class LogPosteriorEvaluator:
 
 
 def main():
+    torch.set_num_threads(1)
 
     #generate mock data vector
     with multiprocessing.Pool(1) as pool:
