@@ -58,7 +58,7 @@ n_processes = 10
 #nside = 512
 #l_max = 1500
 #nslices = 15
-#n_train_per_round = 500
+#n_train_per_round = 1000
 #n_rounds = 3
 #n_cov_sim = 200
 #n_processes = 20
@@ -254,7 +254,7 @@ def main():
 
         print ('sim test 1')
         with multiprocessing.Pool(processes=n_processes) as pool:
-            x_train = pool.starmap(worker, [(theta, False) for theta in theta_samples])
+            z = pool.starmap(worker, [(theta, False) for theta in theta_samples])
 
         # Accumulate data
         theta_train_all.append(theta_train)
@@ -269,7 +269,7 @@ def main():
 
         print ('sim test 2')
         with multiprocessing.Pool(processes=n_processes) as pool:
-            x_train = pool.starmap(worker, [(theta, False) for theta in theta_samples])
+            z = pool.starmap(worker, [(theta, False) for theta in theta_samples])
 
         # MCMC
         ndim = 2
