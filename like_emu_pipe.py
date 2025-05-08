@@ -46,22 +46,22 @@ def make_equal_ngal_bins(nz_func, z_grid, nbins, sigma_z0=0.05):
     return nz_bins, edges
 
 # --- Simulation settings ---
-nside = 16
-l_max = 16
-nslices = 5
-n_train_per_round = 10
-n_rounds = 3
-n_cov_sim = 30
-n_processes = 10
-
-
-#nside = 512
-#l_max = 1500
-#nslices = 15
-#n_train_per_round = 1000
+#nside = 16
+#l_max = 16
+#nslices = 5
+#n_train_per_round = 10
 #n_rounds = 3
-#n_cov_sim = 200
-#n_processes = 20
+#n_cov_sim = 30
+#n_processes = 10
+
+
+nside = 512
+l_max = 1500
+nslices = 15
+n_train_per_round = 1000
+n_rounds = 3
+n_cov_sim = 200
+n_processes = 20
 
 nbins = 5
 n_samples = 5000
@@ -247,15 +247,9 @@ def main():
         with multiprocessing.Pool(processes=n_processes) as pool:
             x_train = pool.starmap(worker, [(theta, False) for theta in theta_samples])
 
-
-
         #accumalate data
         theta_train = torch.tensor(theta_samples, dtype=torch.float32)
         x_train = torch.tensor(x_train, dtype=torch.float32)
-
-        print ('sim test 1')
-        with multiprocessing.Pool(processes=n_processes) as pool:
-            z = pool.starmap(worker, [(theta, False) for theta in theta_samples])
 
         # Accumulate data
         theta_train_all.append(theta_train)
@@ -268,11 +262,7 @@ def main():
         with multiprocessing.Pool(1) as pool:
             model = train_emulator(theta_concat, x_concat)
             torch.save(model.state_dict(), f"data/emulator_round{round_idx+1}.pt")
-
-        print ('sim test 2')
-        with multiprocessing.Pool(processes=n_processes) as pool:
-            z = pool.starmap(worker, [(theta, False) for theta in theta_samples])
-
+            
         # MCMC
         ndim = 2
         nwalkers = 20
