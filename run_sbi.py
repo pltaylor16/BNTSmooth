@@ -151,6 +151,8 @@ def main():
         # Simulate
         with multiprocessing.Pool(processes=n_processes) as pool:
             x_round = pool.map(worker, theta_np)
+            
+        x_round_tensors = [torch.tensor(x, dtype=torch.float32) for x in x_round]
 
         # Save theta_round and x_round for this round
         theta_save_path = f"data/theta_round{round_idx+1}_{'bnt' if use_bnt else 'nobnt'}.npy"
@@ -161,9 +163,6 @@ def main():
 
         print(f"Saved theta to {theta_save_path}")
         print(f"Saved data vectors to {x_save_path}")
-
-
-        x_round_tensors = [torch.tensor(x, dtype=torch.float32) for x in x_round]
 
 
         theta_all.append(theta_round)
