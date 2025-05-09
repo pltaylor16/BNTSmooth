@@ -92,28 +92,28 @@ def worker(theta):
     return data_vector
 
 
-    def train_density_estimator(theta, x, prior, proposal, x_obs, n_samples):
-        embedding_net = nn.Sequential(
-            nn.Linear(x.shape[1], 64),
-            nn.ReLU(),
-            nn.Linear(64, 64),
-            nn.ReLU(),
-            nn.Linear(64, 2)
-        )
+def train_density_estimator(theta, x, prior, proposal, x_obs, n_samples):
+    embedding_net = nn.Sequential(
+        nn.Linear(x.shape[1], 64),
+        nn.ReLU(),
+        nn.Linear(64, 64),
+        nn.ReLU(),
+        nn.Linear(64, 2)
+    )
 
-        neural_posterior = sbi_neural_nets.posterior_nn(
-            model="maf", embedding_net=embedding_net
-        )
+    neural_posterior = sbi_neural_nets.posterior_nn(
+        model="maf", embedding_net=embedding_net
+    )
 
-        inference = SNPE(
-            prior=prior,
-            density_estimator=neural_posterior
-        )
+    inference = SNPE(
+        prior=prior,
+        density_estimator=neural_posterior
+    )
 
-        density_estimator = inference.append_simulations(theta, x, proposal=proposal).train()
-        posterior = inference.build_posterior(density_estimator)
-        samples = posterior.sample((n_samples,), x=x_obs)
-        return posterior, samples
+    density_estimator = inference.append_simulations(theta, x, proposal=proposal).train()
+    posterior = inference.build_posterior(density_estimator)
+    samples = posterior.sample((n_samples,), x=x_obs)
+    return posterior, samples
 
 
 
