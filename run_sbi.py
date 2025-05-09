@@ -119,6 +119,7 @@ def train_density_estimator(theta, x, prior, proposal, x_obs, n_samples):
 
 def main():
     torch.set_num_threads(1)
+    bnt_tag = "bnt" if use_bnt else "nobnt"
     prior_min = torch.tensor([0.5, 0.5])  # alpha, beta
     prior_max = torch.tensor([1.5, 1.5])
     prior = sbi_utils.BoxUniform(prior_min, prior_max)
@@ -151,7 +152,7 @@ def main():
         # Simulate
         with multiprocessing.Pool(processes=n_processes) as pool:
             x_round = pool.map(worker, theta_np)
-            
+
         x_round_tensors = [torch.tensor(x, dtype=torch.float32) for x in x_round]
 
         # Save theta_round and x_round for this round
