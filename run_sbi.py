@@ -56,7 +56,7 @@ n_rounds = len(n_simulations_per_round)
 
 nbins = 5
 n_samples = 5000
-n_processes = 10
+n_processes = 20
 
 
 z = np.linspace(0.01, 2.5, 500)
