@@ -65,9 +65,15 @@ def mpi_simulator(theta_batch, seed_batch, simulator_args=None, batch=False):
 
 simulator_args = None
 
+# Fiducial parameter and setup
+theta_fiducial = np.array([1.0, 1.0])
+ndata = 10
+h = np.abs(theta_fiducial) * 0.01
+n_avg = 100  # Number of sims to average over
+
 #make some mock data
 if rank == 0:
-	data = run_external_simulator(theta_mock, seed=1234)
+	data = run_external_simulator(theta_fiducial, seed=1234)
 	np.save("data/data.npy", data)
 comm.barrier()
 data = np.load('data/data.npy')
@@ -77,12 +83,6 @@ data = np.load('data/data.npy')
 lower = np.array([0.5,0.5])
 upper = np.array([1.5,1.5])
 prior = priors.Uniform(lower, upper)
-
-# Fiducial parameter and setup
-theta_fiducial = np.array([1.0, 1.0])
-ndata = 10
-h = np.abs(theta_fiducial) * 0.01
-n_avg = 100  # Number of sims to average over
 
 # Estimate mu (mean at fiducial)
 local_indices = np.array_split(np.arange(n_avg), size)[rank]
