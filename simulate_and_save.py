@@ -1,28 +1,30 @@
-def run_external_simulator(theta, seed, env_name="BNTSmooth"):
-    import subprocess
-    import os
+# simulate_and_save.py
+import numpy as np
+import sys
+import traceback
+from bnt_smooth import simulator
 
-    theta_str = "[" + ",".join(map(str, theta)) + "]"
-    cmd = (
-        f"source activate {env_name} && "
-        f"python simulate_and_save.py '{theta_str}' {seed}"
-    )
+if __name__ == "__main__":
+    import uuid
 
-    result = subprocess.run(cmd, shell=True, capture_output=True, text=True, executable="/bin/bash")
+    try:
+        theta_str = sys.argv[1]
+        seed = int(sys.argv[2])
+        theta = np.fromstring(theta_str.strip("[]"), sep=",")
 
-    if result.returncode != 0:
-        print("Subprocess returned error:")
-        print(result.stderr)
-        raise RuntimeError("Simulation subprocess failed.")
+        outpath = f"/dev/shm/sim_output_{uuid.uuid4().hex}.npy"
+        print(f"[INFO] Saving to: {outpath}", flush=True)
 
-    outpath = result.stdout.strip()
+        # Run simulator
+        x = simulator(theta, seed)
 
-    if not os.path.exists(outpath):
-        print("Expected output path not found:")
-        print("stdout:", result.stdout)
-        print("stderr:", result.stderr)
-        raise RuntimeError(f"Simulation failed, output file not found: {outpath}")
+        # Save result
+        np.save(outpath, x)
 
-    x = np.load(outpath)
-    os.remove(outpath)
-    return x
+        # Print the path for parent script
+        print(outpath, flush=True)
+
+    except Exception as e:
+        print("[ERROR] Exception occurred during simulation:", flush=True)
+        traceback.print_exc()
+        sys.exit(1)
