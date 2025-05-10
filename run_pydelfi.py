@@ -37,7 +37,7 @@ def run_external_simulator(theta, seed, env_name="BNTSmooth"):
     print(f"[rank {MPI.COMM_WORLD.Get_rank()}] stdout: {result.stdout}")
     print(f"[rank {MPI.COMM_WORLD.Get_rank()}] stderr: {result.stderr}")
 
-    outpath = result.stdout.strip()
+    outpath = result.stdout.strip().splitlines()[-1]
 
     if not os.path.exists(outpath):
         raise RuntimeError(f"Simulation failed, output file not found: {outpath}\nstderr:\n{result.stderr}")
