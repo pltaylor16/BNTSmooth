@@ -16,7 +16,7 @@ from mpi4py import MPI
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 size = comm.Get_size()
-red_op = mpi.SUM
+red_op = MPI.SUM
 use_mpi = True
 
 
