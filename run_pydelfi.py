@@ -16,6 +16,7 @@ from mpi4py import MPI
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 size = comm.Get_size()
+n_procs = size
 red_op = MPI.SUM
 use_mpi = True
 
@@ -77,13 +78,17 @@ n_avg = 100  # Number of sims to average over
 
 #make some mock data
 if rank == 0:
-	print ('computing fiducial data vector')
-	data = run_external_simulator(theta_fiducial, seed=1234)
-	np.save("data/data.npy", data)
-	print ('done computing data vector')
+    if not os.path.exists("data/data.npy"):
+        print('computing fiducial data vector')
+        data = run_external_simulator(theta_fiducial, seed=1234)
+        np.save("data/data.npy", data)
+        print('done computing data vector')
+    else:
+        print('data/data.npy already exists, skipping simulation.')
 comm.barrier()
-data = np.load('data/data.npy')
 
+#load the data
+data = np.load('data/data.npy')
 
 #set up the prior
 lower = np.array([0.5,0.5])
@@ -91,71 +96,93 @@ upper = np.array([1.5,1.5])
 prior = priors.Uniform(lower, upper)
 
 # Estimate mu (mean at fiducial)
-print ('computing mean data vector at fiducial')
-local_indices = np.array_split(np.arange(n_avg), size)[rank]
-local_mu_sims = [run_external_simulator(theta_fiducial, seed=1000 + i)
-                 for i in local_indices]
+if not os.path.exists("data/mu.npy"):
+    print('computing mean data vector at fiducial')
+    local_indices = np.array_split(np.arange(n_avg), size)[rank]
+    local_mu_sims = [run_external_simulator(theta_fiducial, seed=1000 + i)
+                     for i in local_indices]
 
-# Gather to root
-all_mu_sims = comm.gather(local_mu_sims, root=0)
+    # Gather to root
+    all_mu_sims = comm.gather(local_mu_sims, root=0)
 
-if rank == 0:
-    # Flatten list and compute mean
-    flat_mu_sims = [x for sublist in all_mu_sims for x in sublist]
-    mu = np.mean(flat_mu_sims, axis=0)
-    np.save("data/mu.npy", mu)
+    if rank == 0:
+        # Flatten list and compute mean
+        flat_mu_sims = [x for sublist in all_mu_sims for x in sublist]
+        mu = np.mean(flat_mu_sims, axis=0)
+        np.save("data/mu.npy", mu)
+    else:
+        mu = None
+    comm.barrier()
+    print('done computing mean data vector at fiducial')
 else:
-    mu = None
-comm.barrier()
-print ('done computing mean data vector at fiducial')
+    mu = np.load("data/mu.npy")
+    comm.barrier()
 
 # Estimate dmudt via finite differences, averaged over n_avg sims each
 dmudt = np.zeros((ndata, 2)) if rank == 0 else None
 
 # Loop over parameters (alpha and beta)
-print ('computing derivatives')
-for j in range(2):
-    theta_perturbed = theta_fiducial.copy()
-    theta_perturbed[j] += h[j]
+if os.path.exists("data/dmudt.npy"):
+    if rank == 0:
+        print("data/dmudt.npy already exists, skipping derivative computation.")
+    dmudt = np.load("data/dmudt.npy")
+else:
+    if rank == 0:
+        print("computing derivatives")
 
-    # Divide the n_avg simulations across ranks
-    local_indices = np.array_split(np.arange(n_avg), size)[rank]
-    local_sims = [run_external_simulator(theta_perturbed, seed=2000 + j * n_avg + i)
+    dmudt = np.zeros((ndata, 2)) if rank == 0 else None
+
+    for j in range(2):
+        theta_perturbed = theta_fiducial.copy()
+        theta_perturbed[j] += h[j]
+
+        local_indices = np.array_split(np.arange(n_avg), size)[rank]
+        local_sims = [run_external_simulator(theta_perturbed, seed=2000 + j * n_avg + i)
+                      for i in local_indices]
+
+        all_sims = comm.gather(local_sims, root=0)
+
+        if rank == 0:
+            flat_sims = [x for sublist in all_sims for x in sublist]
+            mu_perturbed = np.mean(flat_sims, axis=0)
+            dmudt[:, j] = (mu_perturbed - mu) / h[j]
+
+    dmudt = comm.bcast(dmudt, root=0)
+    if rank == 0:
+        np.save("data/dmudt.npy", dmudt)
+        print("done computing derivatives")
+
+comm.barrier()
+
+# Estimate covariance at fiducial
+if not os.path.exists("data/Cinv.npy"):
+    print('computing covariance matrix at fiducial')
+    n_cov = 200
+    local_indices = np.array_split(np.arange(n_cov), size)[rank]
+    local_sims = [run_external_simulator(theta_fiducial, seed=3000 + i)
                   for i in local_indices]
 
-    # Gather all sims to rank 0
+    # Gather all simulations on rank 0
     all_sims = comm.gather(local_sims, root=0)
 
     if rank == 0:
-        # Flatten and average
-        flat_sims = [x for sublist in all_sims for x in sublist]
-        mu_perturbed = np.mean(flat_sims, axis=0)
-        dmudt[:, j] = (mu_perturbed - mu) / h[j]
+        # Flatten and stack simulations
+        flat_sims = np.array([x for sublist in all_sims for x in sublist])
+        C = np.cov(flat_sims.T)
+        Cinv = np.linalg.inv(C)
+        np.save("data/Cinv.npy", Cinv)
+    else:
+        Cinv = None
 
-# Broadcast result so all ranks get the final dmudt
-dmudt = comm.bcast(dmudt, root=0)
-if rank == 0:
-	np.save("data/dmudt.npy",dmudt)
-comm.barrier()
-print ('done computing derivatives')
-
-# Estimate covariance at fiducial
-n_cov = 200
-local_indices = np.array_split(np.arange(n_cov), size)[rank]
-local_sims = [run_external_simulator(theta_fiducial, seed=3000 + i)
-              for i in local_indices]
-
-# Gather all simulations on rank 0
-all_sims = comm.gather(local_sims, root=0)
-
-if rank == 0:
-    # Flatten and stack simulations
-    flat_sims = np.array([x for sublist in all_sims for x in sublist])
-    C = np.cov(flat_sims.T)
-    Cinv = np.linalg.inv(C)
-    np.save("data/Cinv.npy", Cinv)
+    comm.barrier()
+    print('done computing covariance matrix at fiducial')
 else:
-    Cinv = None
+    if rank == 0:
+        print('data/Cinv.npy already exists, skipping covariance computation.')
+        Cinv = np.load("data/Cinv.npy")
+    else:
+        Cinv = None
+    comm.barrier()
 
 # Broadcast Cinv to all ranks
 Cinv = comm.bcast(Cinv, root=0)
