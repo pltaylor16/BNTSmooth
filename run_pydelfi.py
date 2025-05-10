@@ -22,19 +22,18 @@ use_mpi = True
 
 def run_external_simulator(theta, seed, env_name="BNTSmooth"):
     import subprocess
-    import uuid
     import os
+    from mpi4py import MPI
 
     theta_str = "[" + ",".join(map(str, theta)) + "]"
     cmd = (
-        f"source activate {env_name} && "
+        f"conda run -n {env_name} --no-capture-output "
         f"python simulate_and_save.py '{theta_str}' {seed}"
     )
 
     print(f"[rank {MPI.COMM_WORLD.Get_rank()}] Running command: {cmd}")
     result = subprocess.run(cmd, shell=True, capture_output=True, text=True, executable="/bin/bash")
 
-    # Diagnostic output
     print(f"[rank {MPI.COMM_WORLD.Get_rank()}] stdout: {result.stdout}")
     print(f"[rank {MPI.COMM_WORLD.Get_rank()}] stderr: {result.stderr}")
 
