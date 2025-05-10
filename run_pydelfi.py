@@ -77,8 +77,10 @@ n_avg = 100  # Number of sims to average over
 
 #make some mock data
 if rank == 0:
+	print ('computing fiducial data vector')
 	data = run_external_simulator(theta_fiducial, seed=1234)
 	np.save("data/data.npy", data)
+	print ('done computing data vector')
 comm.barrier()
 data = np.load('data/data.npy')
 
@@ -89,6 +91,7 @@ upper = np.array([1.5,1.5])
 prior = priors.Uniform(lower, upper)
 
 # Estimate mu (mean at fiducial)
+print ('computing mean data vector at fiducial')
 local_indices = np.array_split(np.arange(n_avg), size)[rank]
 local_mu_sims = [run_external_simulator(theta_fiducial, seed=1000 + i, batch=False)
                  for i in local_indices]
@@ -103,11 +106,13 @@ if rank == 0:
 else:
     mu = None
 comm.barrier()
+print ('done computing mean data vector at fiducial')
 
 # Estimate dmudt via finite differences, averaged over n_avg sims each
 dmudt = np.zeros((ndata, 2)) if rank == 0 else None
 
 # Loop over parameters (alpha and beta)
+print ('computing derivatives')
 for j in range(2):
     theta_perturbed = theta_fiducial.copy()
     theta_perturbed[j] += h[j]
@@ -129,6 +134,7 @@ for j in range(2):
 # Broadcast result so all ranks get the final dmudt
 dmudt = comm.bcast(dmudt, root=0)
 comm.barrier()
+print ('done computing derivatives')
 
 # Estimate covariance at fiducial
 n_cov = 200
