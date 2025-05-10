@@ -1,23 +1,30 @@
-# simulate_and_save.py
-import numpy as np
-import sys
-from bnt_smooth import simulator
+def run_external_simulator(theta, seed, env_name="BNTSmooth"):
+    import subprocess
+    import os
 
-if __name__ == "__main__":
-    import uuid
+    # Format theta as a string
+    theta_str = "[" + ",".join(map(str, theta)) + "]"
+    
+    # Build the command
+    cmd = (
+        f"source ~/.bashrc && conda activate {env_name} && "
+        f"python simulate_and_save.py '{theta_str}' {seed}"
+    )
 
-    theta_str = sys.argv[1]
-    seed = int(sys.argv[2])
-    theta = np.fromstring(theta_str.strip("[]"), sep=",")
+    # Run the subprocess
+    result = subprocess.run(cmd, shell=True, capture_output=True, text=True, executable="/bin/bash")
 
-    # Generate unique output path in /dev/shm
-    outpath = f"/dev/shm/sim_output_{uuid.uuid4().hex}.npy"
+    outpath = result.stdout.strip()
 
-    # Run simulator
-    x = simulator(theta, seed)
+    # Debug info
+    if not os.path.exists(outpath):
+        print("Simulation command failed!")
+        print("CMD:", cmd)
+        print("STDOUT:", result.stdout)
+        print("STDERR:", result.stderr)
+        raise RuntimeError(f"Simulation failed, output file not found: {outpath}")
 
-    # Save result to disk
-    np.save(outpath, x)
-
-    # Print path so parent process can find it
-    print(outpath)
+    # Load and return
+    x = np.load(outpath)
+    os.remove(outpath)
+    return x
