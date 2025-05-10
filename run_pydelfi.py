@@ -20,24 +20,29 @@ red_op = MPI.SUM
 use_mpi = True
 
 
-
 def run_external_simulator(theta, seed, env_name="BNTSmooth"):
-    # Build a unique command
+    import subprocess
+    import uuid
+    import os
+
     theta_str = "[" + ",".join(map(str, theta)) + "]"
     cmd = (
-        f"conda activate {env_name} && "
+        f"source activate {env_name} && "
         f"python simulate_and_save.py '{theta_str}' {seed}"
     )
 
-    # Run and capture output
+    print(f"[rank {MPI.COMM_WORLD.Get_rank()}] Running command: {cmd}")
     result = subprocess.run(cmd, shell=True, capture_output=True, text=True, executable="/bin/bash")
+
+    # Diagnostic output
+    print(f"[rank {MPI.COMM_WORLD.Get_rank()}] stdout: {result.stdout}")
+    print(f"[rank {MPI.COMM_WORLD.Get_rank()}] stderr: {result.stderr}")
+
     outpath = result.stdout.strip()
 
     if not os.path.exists(outpath):
-        print(result.stderr)
-        raise RuntimeError(f"Simulation failed, output file not found: {outpath}")
+        raise RuntimeError(f"Simulation failed, output file not found: {outpath}\nstderr:\n{result.stderr}")
 
-    # Load and clean up
     x = np.load(outpath)
     os.remove(outpath)
     return x
