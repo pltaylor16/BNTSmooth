@@ -2,9 +2,9 @@ import numpy as np
 import pyccl as ccl
 import healpy as hp
 from BNT import BNT as BNT
+from scipy.special import erf
+from scipy.interpolate import interp1d
 
-
-import numpy as np
 
 
 class WeakLensingSim:
@@ -641,7 +641,42 @@ class ProcessMaps(WeakLensingSim):
         return smoothed_map
 
 
+class NzEuclid:
+    def __init__(self, nbins=5, z=None, sigma_z0=0.05):
+        self.nbins = nbins
+        self.z = z if z is not None else np.linspace(0.01, 2.5, 500)
+        self.sigma_z0 = sigma_z0
 
+    def parent_nz(self, z):
+        z_euc = 0.9 / 2 ** 0.5
+        return (z / z_euc)**2 * np.exp(-(z / z_euc)**1.5)
+
+    def get_nz(self):
+        z_grid = self.z
+        nz_parent = self.parent_nz(z_grid)
+        nz_parent /= np.trapz(nz_parent, z_grid)
+
+        cdf = np.cumsum(nz_parent)
+        cdf /= cdf[-1]
+        inv_cdf = interp1d(np.concatenate([[0], cdf, [1]]),
+                           np.concatenate([[z_grid[0]], z_grid, [z_grid[-1]]]))
+        edges = inv_cdf(np.linspace(0, 1, self.nbins + 1))
+
+        nz_bins = []
+        sigma_of_z = lambda zz: self.sigma_z0 * (1.0 + zz)
+
+        for i in range(self.nbins):
+            z_lo, z_hi = edges[i], edges[i + 1]
+            sig = sigma_of_z(z_grid)
+            kernel = 0.5 * (erf((z_hi - z_grid)/(np.sqrt(2)*sig)) -
+                            erf((z_lo - z_grid)/(np.sqrt(2)*sig)))
+            nz_i_obs = nz_parent * kernel
+            area = np.trapz(nz_i_obs, z_grid)
+            if area > 0:
+                nz_i_obs /= area
+            nz_bins.append((z_grid, nz_i_obs))
+
+        return nz_bins
 
         
 
