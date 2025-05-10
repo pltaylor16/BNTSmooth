@@ -78,7 +78,7 @@ data = np.load('data/data.npy')
 
 #set up the prior
 lower = np.array([0.5,0.5])
-upper = np.array([1.5.1.5])
+upper = np.array([1.5,1.5])
 prior = priors.Uniform(lower, upper)
 
 # Fiducial parameter and setup
