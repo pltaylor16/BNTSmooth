@@ -192,7 +192,7 @@ comm.barrier()
 Compressor = score.Gaussian(ndata, 
 							theta_fiducial,
 							mu=mu, Cinv=Cinv, 
-							dmudt=dmudt, 
+							dmudt=dmudt.T, 
 							rank = rank, 
 							n_procs = n_procs, 
 							comm = comm, 
