@@ -47,7 +47,7 @@ def run_external_simulator(theta, seed, env_name="BNTSmooth"):
     return x
 
 #now we return back to the pydelfi script
-def mpi_simulator(theta_batch, seed_batch, simulator_args=None, batch=False):
+def mpi_simulator(theta_batch, seed_batch, simulator_args=None, batch=1):
     """
     MPI-distributed simulator that runs only on the assigned rank.
     """
@@ -93,7 +93,7 @@ prior = priors.Uniform(lower, upper)
 # Estimate mu (mean at fiducial)
 print ('computing mean data vector at fiducial')
 local_indices = np.array_split(np.arange(n_avg), size)[rank]
-local_mu_sims = [run_external_simulator(theta_fiducial, seed=1000 + i, batch=False)
+local_mu_sims = [run_external_simulator(theta_fiducial, seed=1000 + i)
                  for i in local_indices]
 
 # Gather to root
@@ -119,7 +119,7 @@ for j in range(2):
 
     # Divide the n_avg simulations across ranks
     local_indices = np.array_split(np.arange(n_avg), size)[rank]
-    local_sims = [simulator(theta_perturbed, seed=2000 + j * n_avg + i, simulator_args=None, batch=False)
+    local_sims = [run_external_simulator(theta_perturbed, seed=2000 + j * n_avg + i)
                   for i in local_indices]
 
     # Gather all sims to rank 0
@@ -139,7 +139,7 @@ print ('done computing derivatives')
 # Estimate covariance at fiducial
 n_cov = 200
 local_indices = np.array_split(np.arange(n_cov), size)[rank]
-local_sims = [simulator(theta_fiducial, seed=3000 + i, simulator_args=None, batch=False)
+local_sims = [run_external_simulator(theta_fiducial, seed=3000 + i)
               for i in local_indices]
 
 # Gather all simulations on rank 0
@@ -207,7 +207,7 @@ n_initial = 200
 n_batch = 200
 n_populations = 5
 
-DelfiEnsemble.sequential_training(simulator, compressor, n_initial, n_batch, n_populations, patience=20,
+DelfiEnsemble.sequential_training(mpi_simulator, compressor, n_initial, n_batch, n_populations, patience=20,
                        save_intermediate_posteriors=True)
 
 
