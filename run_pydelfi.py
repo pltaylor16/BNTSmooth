@@ -1,21 +1,18 @@
 import numpy as np
-import simulators.jla_supernovae.jla_simulator as jla
 import pydelfi.ndes as ndes
 import pydelfi.delfi as delfi
 import pydelfi.score as score
 import pydelfi.priors as priors
 import tensorflow as tf
-tf.logging.set_verbosity(tf.logging.ERROR)
+
 
 # set up the simualtor
 import subprocess
 import os
 import uuid
 
-
+#set up mpi
 from mpi4py import MPI
-import numpy as np
-
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 size = comm.Get_size()
