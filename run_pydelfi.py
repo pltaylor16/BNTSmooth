@@ -25,7 +25,7 @@ def run_external_simulator(theta, seed, env_name="BNTSmooth"):
     # Build a unique command
     theta_str = "[" + ",".join(map(str, theta)) + "]"
     cmd = (
-        f"source activate {env_name} && "
+        f"conda activate {env_name} && "
         f"python simulate_and_save.py '{theta_str}' {seed}"
     )
 
