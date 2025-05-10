@@ -698,7 +698,7 @@ def simulator(theta, seed, nside=512, lmax=1500, nslices=15,
         baryon_feedback=baryon_feedback,
         alpha=alpha,
         beta=beta,
-        seed=seed
+        seed=seed,
         l_max=l_max,
         nside=nside,
         nslices=nslices
