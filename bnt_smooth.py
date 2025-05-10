@@ -683,7 +683,7 @@ class NzEuclid:
 
 def simulator(theta, seed, nside=512, lmax=1500, nslices=15, 
     z = np.linspace(0.01,2.5,500), nbins = 5, n_eff_list = [30.0 / 5] * 5,
-    sigma_eps_list = [0.26] * nbins, baryon_feedback = 7):
+    sigma_eps_list = [0.26] * 5, baryon_feedback = 7):
     alpha, beta = float(theta[0]), float(theta[1])
     print(f"Running simulation with alpha = {alpha:.3f}, beta = {beta:.3f}")
 
