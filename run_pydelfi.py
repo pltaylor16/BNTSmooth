@@ -103,6 +103,7 @@ if rank == 0:
     # Flatten list and compute mean
     flat_mu_sims = [x for sublist in all_mu_sims for x in sublist]
     mu = np.mean(flat_mu_sims, axis=0)
+    np.save("data/mu.npy", mu)
 else:
     mu = None
 comm.barrier()
@@ -133,6 +134,8 @@ for j in range(2):
 
 # Broadcast result so all ranks get the final dmudt
 dmudt = comm.bcast(dmudt, root=0)
+if rank == 0:
+	np.save("data/dmudt.npy",dmudt)
 comm.barrier()
 print ('done computing derivatives')
 
@@ -150,6 +153,7 @@ if rank == 0:
     flat_sims = np.array([x for sublist in all_sims for x in sublist])
     C = np.cov(flat_sims.T)
     Cinv = np.linalg.inv(C)
+    np.save("data/Cinv.npy", Cinv)
 else:
     Cinv = None
 
