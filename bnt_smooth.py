@@ -681,7 +681,34 @@ class NzEuclid:
         
 
 
+def simulator(theta, seed, nside=512, lmax=1500, nslices=15, 
+    z = np.linspace(0.01,2.5,500), nbins = 5, n_eff_list = [30.0 / nbins] * nbins,
+    sigma_eps_list = [0.26] * nbins, baryon_feedback = 7):
+    alpha, beta = float(theta[0]), float(theta[1])
+    print(f"Running simulation with alpha = {alpha:.3f}, beta = {beta:.3f}")
 
+    Nz = NzEuclid(nbins = nbins, z=z)
+    nz_list = Nz.get_nz()
+
+    sim = ProcessMaps(
+        z_array=z,
+        nz_list=nz_list,
+        n_eff_list=n_eff_list,
+        sigma_eps_list=sigma_eps_list,
+        baryon_feedback=baryon_feedback,
+        alpha=alpha,
+        beta=beta,
+        seed=seed
+        l_max=l_max,
+        nside=nside,
+        nslices=nslices
+    )
+
+    kappa_maps = sim.generate_noisy_kappa_maps()
+    if use_bnt:
+        kappa_maps = sim.bnt_transform_kappa_maps(kappa_maps)
+    data_vector = sim.compute_data_vector(kappa_maps)
+    return data_vector
 
 
 
