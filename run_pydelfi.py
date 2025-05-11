@@ -70,8 +70,6 @@ def mpi_simulator(theta_batch, seed_batch, simulator_args=None, batch=1):
 #delfi simulator
 def sim_4_delfi(theta, seed, simulator_args=None, batch=1):
     x = run_external_simulator(theta, seed)
-    print ('hello')
-    print (type(x))
     return x
     
 simulator_args = None
@@ -240,9 +238,9 @@ DelfiEnsemble = delfi.Delfi(compressed_data, prior, NDEs,
 DelfiEnsemble.fisher_pretraining()
 
 #sequential neural likelihood
-n_initial = 200
-n_batch = 200
-n_populations = 5
+n_initial = 1000
+n_batch = 500
+n_populations = 10
 
 print ('start the delfi training')
 
