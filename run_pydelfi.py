@@ -67,7 +67,10 @@ def mpi_simulator(theta_batch, seed_batch, simulator_args=None, batch=1):
     else:
         return None  # Non-root returns nothing
 
-
+#delfi simulator
+def sim_4_delfi(theta, seed):
+    return run_external_simulator(theta, seed, batch = 1):
+    
 simulator_args = None
 
 # Fiducial parameter and setup
@@ -190,13 +193,13 @@ comm.barrier()
 
 # Build compressor
 Compressor = score.Gaussian(ndata, 
-							theta_fiducial,
-							mu=mu, Cinv=Cinv, 
-							dmudt=dmudt.T, 
-							rank = rank, 
-							n_procs = n_procs, 
-							comm = comm, 
-							red_op = red_op)
+                            theta_fiducial,
+                            mu=mu, Cinv=Cinv, 
+                            dmudt=dmudt.T, 
+                            rank = rank, 
+                            n_procs = n_procs, 
+                            comm = comm, 
+                            red_op = red_op)
 Compressor.compute_fisher()
 Finv = Compressor.Finv
 
@@ -238,9 +241,24 @@ n_initial = 200
 n_batch = 200
 n_populations = 5
 
-DelfiEnsemble.sequential_training(mpi_simulator, compressor, n_initial, n_batch, n_populations, patience=20,
-                       save_intermediate_posteriors=True)
+print ('start the delfi training')
+
+DelfiEnsemble.sequential_training(sim_4_delfi,
+                                compressor, 
+                                n_initial, 
+                                n_batch, 
+                                n_populations, 
+                                patience=20,
+                                save_intermediate_posteriors=True)
 
 
+
+#save the training loss etc
+r1 = np.array([DelfiMDN.stacked_sequential_training_loss])
+r2 = np.array([DelfiMDN.stacked_sequential_validation_loss])
+r3 = np.array([DelfiMDN.sequential_nsims])
+np.savetxt('delfi/training_loss.txt', r1)
+np.savetxt('delfi/validation_loss.txt', r2)
+np.savetxt('delfi/nsmis.txt', r3)
 
 
