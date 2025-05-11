@@ -68,8 +68,11 @@ def mpi_simulator(theta_batch, seed_batch, simulator_args=None, batch=1):
         return None  # Non-root returns nothing
 
 #delfi simulator
-def sim_4_delfi(theta, seed):
-    return run_external_simulator(theta, seed)
+def sim_4_delfi(theta, seed, simulator_args=None, batch=1):
+    x = run_external_simulator(theta, seed)
+    print ('hello')
+    print (type(x))
+    return x
     
 simulator_args = None
 
