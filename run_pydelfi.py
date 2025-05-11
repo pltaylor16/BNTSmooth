@@ -69,7 +69,7 @@ def mpi_simulator(theta_batch, seed_batch, simulator_args=None, batch=1):
 
 #delfi simulator
 def sim_4_delfi(theta, seed):
-    return run_external_simulator(theta, seed, batch = 1)
+    return run_external_simulator(theta, seed)
     
 simulator_args = None
 
@@ -248,6 +248,8 @@ DelfiEnsemble.sequential_training(sim_4_delfi,
                                 n_initial, 
                                 n_batch, 
                                 n_populations, 
+                                simulator_args = simulator_args,
+                                compressor_args = compressor_args,
                                 patience=20,
                                 save_intermediate_posteriors=True)
 
