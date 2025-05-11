@@ -69,7 +69,7 @@ def mpi_simulator(theta_batch, seed_batch, simulator_args=None, batch=1):
 
 #delfi simulator
 def sim_4_delfi(theta, seed):
-    return run_external_simulator(theta, seed, batch = 1):
+    return run_external_simulator(theta, seed, batch = 1)
     
 simulator_args = None
 
