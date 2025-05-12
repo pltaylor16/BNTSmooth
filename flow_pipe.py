@@ -109,9 +109,6 @@ def compute_fisher_numerical(worker_fn, theta_fid, inv_cov, step_frac=0.05, n_av
     for i, j in itertools.product(range(ndim), repeat=2):
         F[i, j] = derivatives[i] @ inv_cov @ derivatives[j]
 
-    # Save the Fisher
-    np.save('data/fisher.npy', F)
-
     return F
 
 
@@ -219,7 +216,7 @@ def main():
         new_theta_samples_jax = flow.sample(subkey, (n_samples, ))
         posterior_samples = np.array(new_theta_samples_jax)
 
-        np.save('posterior_samples_round{round_idx+1}.npy', posterior_samples)
+        np.save(f'posterior_samples_round{round_idx+1}.npy', posterior_samples)
 
         # Plot with GetDist
         names = ["alpha", "beta"]
