@@ -124,7 +124,7 @@ def main():
     #generate mock data vector
     with multiprocessing.Pool(1) as pool:
         x_obs_list = pool.map(worker_fn, [[1.0, 1.0]])
-    x_obs = np.array(x_obs_list)
+    x_obs = x_obs_list[0]
 
     #generate training data
     prior_min = [0.5, 0.5]
