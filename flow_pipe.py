@@ -19,7 +19,7 @@ l_max = 16
 nslices = 5
 n_train_per_round = 8
 n_rounds = 3
-n_cov_sim = 30
+n_cov_sim = 16
 n_derivative_sim = 8
 n_processes = 8
 
@@ -179,7 +179,7 @@ def main():
         log_weights = []
 
         for x_sim in x_sims:
-            delta = x_obs.numpy() - x_sim
+            delta = x_obs - x_sim
             logL = -0.5 * delta @ inv_cov @ delta
             log_weights.append(logL)
 
