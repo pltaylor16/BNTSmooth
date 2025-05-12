@@ -222,6 +222,8 @@ def main():
         new_theta_samples_jax = flow.sample(seed=subkey, n=n_samples)
         posterior_samples = np.array(new_theta_samples_jax)
 
+        np.save('posterior_samples_round{round_idx+1}.npy', posterior_samples)
+
         # Plot with GetDist
         names = ["alpha", "beta"]
         g = MCSamples(samples=posterior_samples, names=names, labels=names)
