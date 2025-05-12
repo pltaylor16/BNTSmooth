@@ -13,14 +13,14 @@ from getdist import MCSamples, plots
 from bnt_smooth import NzEuclid
 
 # --- Simulation settings ---
-nside = 16
-l_max = 16
-nslices = 5
-n_train_per_round = 8
+nside = 512
+l_max = 1500
+nslices = 15
+n_train_per_round = 1000
 n_rounds = 3
-n_cov_sim = 32
-n_derivative_sim = 8
-n_processes = 8
+n_cov_sim = 300
+n_derivative_sim = 100
+n_processes = 20
 
 
 #nside = 512
@@ -166,7 +166,7 @@ class LogPosteriorEvaluator:
         delta = self.x_obs.numpy() - pred
         return -0.5 * delta @ self.inv_cov @ delta
 
-def compute_fisher_numerical(worker_fn, theta_fid, inv_cov=inv_cov, step_frac=0.05, n_avg=n_derivative_sim, n_processes=n_processes):
+def compute_fisher_numerical(worker_fn, theta_fid, inv_cov, step_frac=0.05, n_avg=n_derivative_sim, n_processes=n_processes):
     import itertools
 
     theta_fid = np.array(theta_fid)
@@ -195,9 +195,6 @@ def compute_fisher_numerical(worker_fn, theta_fid, inv_cov=inv_cov, step_frac=0.
         x_minus = simulate_theta(theta_minus)
         dx_dtheta = (x_plus - x_minus) / (2 * steps[i])
         derivatives.append(dx_dtheta)
-
-    # Compute inverse covariance at fiducial
-    inv_cov = np.linalg.inv(cov)
 
     # Compute Fisher matrix
     F = np.zeros((ndim, ndim))
@@ -255,7 +252,7 @@ def main():
             # Draw theta
             if round_idx == 0:
                 theta_fid = [1.0, 1.0]
-                F = compute_fisher_numerical(worker_fn, theta_fid)
+                F = compute_fisher_numerical(worker_fn, theta_fid, inv_cov)
                 theta_samples = np.random.multivariate_normal(theta_fid, np.linalg.inv(F), size=n_train_per_round)
             else:
                 sample_idx = np.random.choice(posterior_samples.shape[0], size=n_train_per_round, replace=False)
