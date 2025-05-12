@@ -7,8 +7,10 @@ from getdist import MCSamples, plots
 from bnt_smooth import NzEuclid
 import jax
 import jax.numpy as jnp
-from flowjax.bijectors import masked_autoregressive_flow, RationalQuadraticSpline
+import jax.random as jr
+from flowjax.bijections import RationalQuadraticSpline
 from flowjax.distributions import Normal
+from flowjax.flows import masked_autoregressive_flow
 from utils import fit_to_data_weight, WeightedMaximumLikelihoodLoss
 
 # --- Simulation settings ---
