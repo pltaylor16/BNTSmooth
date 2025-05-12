@@ -211,10 +211,6 @@ def main():
             loss_fn=WeightedMaximumLikelihoodLoss(),
         )
 
-        # Save the fitted flow (optional)
-        import pickle
-        with open(f"data/fitted_flow_{bnt_tag}_round0.pkl", "wb") as f:
-            pickle.dump(flow, f)
 
         # --- Step 4: Draw from flow and reweight ---
 
