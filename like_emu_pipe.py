@@ -10,72 +10,40 @@ import emcee
 import pickle
 from tqdm import tqdm
 from getdist import MCSamples, plots
-
-def parent_nz(z):
-    z_euc = 0.9 / 2 ** 0.5
-    return (z / z_euc)**2 * np.exp(-(z / z_euc)**1.5)
-
-
-def make_equal_ngal_bins(nz_func, z_grid, nbins, sigma_z0=0.05):
-    from scipy.special import erf
-    from scipy.interpolate import interp1d
-
-    nz_parent = nz_func(z_grid)
-    nz_parent /= np.trapz(nz_parent, z_grid)
-
-    cdf = np.cumsum(nz_parent)
-    cdf /= cdf[-1]
-    inv_cdf = interp1d(np.concatenate([[0], cdf, [1]]),
-                       np.concatenate([[z_grid[0]], z_grid, [z_grid[-1]]]))
-    edges = inv_cdf(np.linspace(0, 1, nbins + 1))
-
-    nz_bins = []
-    sigma_of_z = lambda zz: sigma_z0 * (1.0 + zz)
-
-    for i in range(nbins):
-        z_lo, z_hi = edges[i], edges[i + 1]
-        sig = sigma_of_z(z_grid)
-        kernel = 0.5 * (erf((z_hi - z_grid)/(np.sqrt(2)*sig)) -
-                        erf((z_lo - z_grid)/(np.sqrt(2)*sig)))
-        nz_i_obs = nz_parent * kernel
-        area = np.trapz(nz_i_obs, z_grid)
-        if area > 0:
-            nz_i_obs /= area
-        nz_bins.append((z_grid, nz_i_obs))
-
-    return nz_bins, edges
+from bnt_smooth import NzEuclid
 
 # --- Simulation settings ---
-#nside = 16
-#l_max = 16
-#nslices = 5
-#n_train_per_round = 10
-#n_rounds = 3
-#n_cov_sim = 30
-#n_processes = 10
-
-
-nside = 512
-l_max = 1500
-nslices = 15
-n_train_per_round = 1000
+nside = 16
+l_max = 16
+nslices = 5
+n_train_per_round = 8
 n_rounds = 3
-n_cov_sim = 200
-n_processes = 20
+n_cov_sim = 32
+n_processes = 8
+
+
+#nside = 512
+#l_max = 1500
+#nslices = 15
+#n_train_per_round = 1000
+#n_rounds = 3
+#n_cov_sim = 200
+#n_processes = 20
 
 nbins = 5
 n_samples = 5000
 
 
 z = np.linspace(0.01, 2.5, 500)
-nz_list, _ = make_equal_ngal_bins(parent_nz, z, nbins=nbins)
+Nz = NzEuclid(nbins = nbins, z=z)
+nz_list = Nz.get_nz()
 n_eff_list = [30.0 / nbins] * nbins
 sigma_eps_list = [0.26] * nbins
 baryon_feedback = 7.
 seed = 1234
 
 
-def worker(theta):
+def worker(theta, use_bnt):
     alpha, beta = float(theta[0]), float(theta[1])
     print(f"Running simulation with alpha = {alpha:.3f}, beta = {beta:.3f}")
 
@@ -93,8 +61,7 @@ def worker(theta):
         nslices=nslices
     )
 
-
-    kappa_maps = sim.generate_noisy_kappa_maps()  
+    kappa_maps = sim.generate_noisy_kappa_maps()
 
     if use_bnt:
         kappa_maps = sim.bnt_transform_kappa_maps(kappa_maps)
@@ -199,9 +166,12 @@ def main():
 
     bnt_tag = "bnt" if use_bnt else "nobnt"
 
+    # create version of worker with use_bnt fixed
+    worker_fn = partial(worker, use_bnt=use_bnt)
+
     #generate mock data vector
     with multiprocessing.Pool(1) as pool:
-        x_obs_list = pool.map(worker, [[1.0, 1.0]])
+        x_obs_list = pool.map(worker_fn, [[1.0, 1.0]])
     x_obs = torch.tensor(x_obs_list[0], dtype=torch.float32)
 
     #generate training data
@@ -212,7 +182,7 @@ def main():
     print("Running fiducial simulations for covariance...")
     fiducial_thetas = np.tile([[1.0, 1.0]], (n_cov_sim, 1))
     with multiprocessing.Pool(n_processes) as pool:
-        x_fiducial = pool.map(worker, fiducial_thetas)
+        x_fiducial = pool.map(worker_fn, fiducial_thetas)
     x_fiducial = np.stack(x_fiducial)
     cov = np.cov(x_fiducial.T)
 
@@ -242,7 +212,7 @@ def main():
 
         # Simulate
         with multiprocessing.Pool(processes=n_processes) as pool:
-            x_train = pool.map(worker, theta_samples)
+            x_train = pool.map(worker_fn, theta_samples)
 
         #accumalate data
         theta_train = torch.tensor(theta_samples, dtype=torch.float32)
