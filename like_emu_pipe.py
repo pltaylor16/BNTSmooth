@@ -86,9 +86,11 @@ class Emulator(nn.Module):
         return self.net(theta)
 
 
-def train_emulator(theta_train, x_train, n_epochs=1000, lr=1e-3, patience=20):
+def train_emulator(theta_train, x_train, inv_cov, n_epochs=1000, lr=1e-3, patience=20):
     from torch.utils.data import TensorDataset, DataLoader, random_split
-    import torch.nn.functional as F
+
+    # Convert inverse covariance matrix to a tensor
+    inv_cov_tensor = torch.tensor(inv_cov, dtype=torch.float32)
 
     # Split into training and validation sets
     dataset = TensorDataset(theta_train, x_train)
@@ -99,7 +101,7 @@ def train_emulator(theta_train, x_train, n_epochs=1000, lr=1e-3, patience=20):
     train_loader = DataLoader(train_set, batch_size=128, shuffle=True)
     val_loader = DataLoader(val_set, batch_size=128)
 
-    # Define a small neural network
+    # Define neural network model
     model = nn.Sequential(
         nn.Linear(2, 64),
         nn.ReLU(),
@@ -110,6 +112,10 @@ def train_emulator(theta_train, x_train, n_epochs=1000, lr=1e-3, patience=20):
 
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
+    def chi2_loss(pred, target):
+        diff = pred - target
+        return torch.einsum("bi,ij,bj->b", diff, inv_cov_tensor, diff).mean()
+
     best_val_loss = float("inf")
     patience_counter = 0
     best_model_state = None
@@ -118,7 +124,7 @@ def train_emulator(theta_train, x_train, n_epochs=1000, lr=1e-3, patience=20):
         model.train()
         for batch_theta, batch_x in train_loader:
             pred = model(batch_theta)
-            loss = F.mse_loss(pred, batch_x)
+            loss = chi2_loss(pred, batch_x)
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
@@ -126,9 +132,9 @@ def train_emulator(theta_train, x_train, n_epochs=1000, lr=1e-3, patience=20):
         # Validation
         model.eval()
         with torch.no_grad():
-            val_loss = sum(F.mse_loss(model(t), x) for t, x in val_loader) / len(val_loader)
+            val_loss = sum(chi2_loss(model(t), x) for t, x in val_loader) / len(val_loader)
 
-        print(f"Epoch {epoch+1} — Val Loss: {val_loss:.4e}")
+        print(f"Epoch {epoch+1} — Val χ²: {val_loss:.4f}")
         if val_loss < best_val_loss:
             best_val_loss = val_loss
             best_model_state = model.state_dict()
@@ -139,7 +145,6 @@ def train_emulator(theta_train, x_train, n_epochs=1000, lr=1e-3, patience=20):
                 print(f"Early stopping at epoch {epoch+1}.")
                 break
 
-    # Load best model state
     if best_model_state is not None:
         model.load_state_dict(best_model_state)
 
@@ -273,7 +278,7 @@ def main():
 
         # Train emulator
         with multiprocessing.Pool(1) as pool:
-            model = train_emulator(theta_concat, x_concat)
+            model = train_emulator(theta_concat, x_concat, inv_cov)
             torch.save(model.state_dict(), f"data/emulator_{bnt_tag}_round{round_idx+1}.pt")
             
         # MCMC
