@@ -19,6 +19,7 @@ nslices = 5
 n_train_per_round = 8
 n_rounds = 3
 n_cov_sim = 32
+n_derivative_sim = 8
 n_processes = 8
 
 
@@ -160,6 +161,49 @@ class LogPosteriorEvaluator:
         delta = self.x_obs.numpy() - pred
         return -0.5 * delta @ self.inv_cov @ delta
 
+def compute_fisher_numerical(worker_fn, theta_fid, inv_cov=inv_cov, step_frac=0.05, n_avg=n_derivative_sim, n_processes=n_processes):
+    import itertools
+
+    theta_fid = np.array(theta_fid)
+    ndim = len(theta_fid)
+    steps = step_frac * np.abs(theta_fid)
+    derivatives = []
+
+    def simulate_theta(theta):
+        with multiprocessing.Pool(n_processes) as pool:
+            sims = pool.map(worker_fn, [theta] * n_avg)
+        return np.mean(sims, axis=0)
+
+    # Compute fiducial mean
+    print("Computing fiducial mean for Fisher")
+    x_fid = simulate_theta(theta_fid)
+
+    # Compute derivatives
+    for i in range(ndim):
+        theta_plus = theta_fid.copy()
+        theta_plus[i] += steps[i]
+        theta_minus = theta_fid.copy()
+        theta_minus[i] -= steps[i]
+
+        print(f"Computing derivative wrt theta[{i}]")
+        x_plus = simulate_theta(theta_plus)
+        x_minus = simulate_theta(theta_minus)
+        dx_dtheta = (x_plus - x_minus) / (2 * steps[i])
+        derivatives.append(dx_dtheta)
+
+    # Compute inverse covariance at fiducial
+    inv_cov = np.linalg.inv(cov)
+
+    # Compute Fisher matrix
+    F = np.zeros((ndim, ndim))
+    for i, j in itertools.product(range(ndim), repeat=2):
+        F[i, j] = derivatives[i] @ inv_cov @ derivatives[j]
+
+    # Save the Fisher
+    np.save('data/fisher.npy', F)
+
+    return F
+
 
 def main():
     torch.set_num_threads(1)
@@ -205,7 +249,9 @@ def main():
 
             # Draw theta
             if round_idx == 0:
-                theta_samples = np.random.uniform(low=prior_min, high=prior_max, size=(n_train_per_round, 2))
+                theta_fid = [1.0, 1.0]
+                F = compute_fisher_numerical(worker_fn, theta_fid)
+                theta_samples = np.random.multivariate_normal(theta_fid, np.linalg.inv(F), size=n_train_per_round)
             else:
                 sample_idx = np.random.choice(posterior_samples.shape[0], size=n_train_per_round, replace=False)
                 theta_samples = posterior_samples[sample_idx]
