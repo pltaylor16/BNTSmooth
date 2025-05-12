@@ -216,7 +216,7 @@ def main():
 
         # Draw samples from the fitted flow
         key, subkey = jax.random.split(key)
-        new_theta_samples_jax = flow.sample(subkey, n=n_samples)
+        new_theta_samples_jax = flow.sample(subkey, (n_samples, ))
         posterior_samples = np.array(new_theta_samples_jax)
 
         np.save('posterior_samples_round{round_idx+1}.npy', posterior_samples)
