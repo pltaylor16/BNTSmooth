@@ -565,7 +565,6 @@ class ProcessMaps(WeakLensingSim):
 
 
 
-
     def smooth_kappa_maps_by_physical_scale(self, physical_scale_mpc, mean_chis, kappa_maps):
         """
         Smooth κ maps by converting a physical scale (in Mpc) to an angular scale using mean comoving distances.
