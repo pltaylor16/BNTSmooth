@@ -15,14 +15,14 @@ from utils import fit_to_data_weight, WeightedMaximumLikelihoodLoss
 import random
 
 # --- Simulation settings ---
-nside = 16
-l_max = 16
+nside = 512
+l_max = 1500
 nslices = 5
-n_train_per_round = 8
-n_rounds = 3
-n_cov_sim = 16
-n_derivative_sim = 8
-n_processes = 8
+n_train_per_round = 1000
+n_rounds = 5
+n_cov_sim = 300
+n_derivative_sim = 100
+n_processes = 20
 
 
 #nside = 512
@@ -216,7 +216,7 @@ def main():
         new_theta_samples_jax = flow.sample(subkey, (n_samples, ))
         posterior_samples = np.array(new_theta_samples_jax)
 
-        np.save(f'posterior_samples_round{round_idx+1}.npy', posterior_samples)
+        np.save(f'data/posterior_samples_round{round_idx+1}.npy', posterior_samples)
 
         # Plot with GetDist
         names = ["alpha", "beta"]
