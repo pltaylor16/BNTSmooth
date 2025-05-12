@@ -12,6 +12,7 @@ from flowjax.bijections import RationalQuadraticSpline
 from flowjax.distributions import Normal
 from flowjax.flows import masked_autoregressive_flow
 from utils import fit_to_data_weight, WeightedMaximumLikelihoodLoss
+import random
 
 # --- Simulation settings ---
 nside = 16
