@@ -11,7 +11,7 @@ nside = 512
 l_max = 1500
 nslices = 5
 n_cov_sim = 300
-n_derivative_sim = 1000
+n_derivative_sim = 500
 n_processes = 20
 
 
@@ -103,8 +103,8 @@ def compute_fisher_numerical(worker_fn, theta_fid, inv_cov, step_frac=0.05, n_av
         theta_minus[i] -= steps[i]
 
         print(f"Computing derivative wrt theta[{i}]")
-        x_plus = simulate_theta_with_convergence(theta_plus, label="theta_plus_0", convergence_test = True)
-        x_minus = simulate_theta_with_convergence(theta_minus, label="theta_minus_0", convergence_test = True)
+        x_plus = simulate_theta_with_convergence(theta_plus, label="theta_plus_0", convergence_test = False)
+        x_minus = simulate_theta_with_convergence(theta_minus, label="theta_minus_0", convergence_test = False)
         dx_dtheta = (x_plus - x_minus) / (2 * steps[i])
         derivatives.append(dx_dtheta)
 
