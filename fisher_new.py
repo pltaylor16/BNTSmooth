@@ -10,8 +10,8 @@ import random
 nside = 512
 l_max = 1500
 nslices = 5
-n_cov_sim = 300
-n_derivative_sim = 500
+n_cov_sim = 200
+n_derivative_sim = 100
 n_processes = 20
 
 
@@ -71,28 +71,11 @@ def compute_fisher_numerical(worker_fn, theta_fid, inv_cov, step_frac=0.05, n_av
     steps = step_frac * np.abs(theta_fid)
     derivatives = []
 
-    def simulate_theta_with_convergence(theta, label, convergence_test = True):
+    def simulate_theta(theta, label):
         with multiprocessing.Pool(n_processes) as pool:
             sims = pool.map(worker_fn, [theta] * n_derivative_sim)
         sims = np.stack(sims)
         
-        if convergence_test == True:
-            means = np.array([np.mean(sims[:k+1], axis=0) for k in range(n_derivative_sim)])
-            norms = np.linalg.norm(means, axis=1)
-
-            # Plot convergence
-            import matplotlib.pyplot as plt
-            plt.figure()
-            plt.plot(np.arange(1, n_derivative_sim+1), norms, marker='o')
-            plt.xlabel("Number of simulations averaged")
-            plt.ylabel(f"||mean(data)|| for {label}")
-            plt.yscale("log")
-            plt.grid(True)
-            plt.title(f"Convergence of mean at {label}")
-            plt.tight_layout()
-            plt.savefig(f"data/convergence_{label.replace(' ', '_')}.png")
-            print(f"Saved convergence plot: data/convergence_{label.replace(' ', '_')}.png")
-
         return np.mean(sims, axis=0)
 
     # Compute derivatives
@@ -103,8 +86,8 @@ def compute_fisher_numerical(worker_fn, theta_fid, inv_cov, step_frac=0.05, n_av
         theta_minus[i] -= steps[i]
 
         print(f"Computing derivative wrt theta[{i}]")
-        x_plus = simulate_theta_with_convergence(theta_plus, label="theta_plus_0", convergence_test = False)
-        x_minus = simulate_theta_with_convergence(theta_minus, label="theta_minus_0", convergence_test = False)
+        x_plus = simulate_theta(theta_plus, label="theta_plus_0")
+        x_minus = simulate_theta(theta_minus, label="theta_minus_0")
         dx_dtheta = (x_plus - x_minus) / (2 * steps[i])
         derivatives.append(dx_dtheta)
 
