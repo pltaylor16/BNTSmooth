@@ -11,7 +11,7 @@ nside = 512
 l_max = 1500
 nslices = 5
 n_cov_sim = 300
-n_derivative_sim = 200
+n_derivative_sim = 1000
 n_processes = 20
 
 
