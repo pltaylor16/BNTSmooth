@@ -15,7 +15,7 @@ step_frac = 0.05
 delta = step_frac
 theta_fid = np.array([1.0, 1.0])
 z = np.linspace(0.01, 2.5, 500)
-fwhm = 10. #arcmin
+fwhm_arcmin = 10. #arcmin
 
 # --- Survey specification ---
 Nz = NzEuclid(nbins=nbins, z=z)
@@ -50,10 +50,10 @@ def compute_dvec_from_file(path, baryon_feedback, use_bnt=False, naive=False):
     if use_bnt:
         if naive:
             kappa_maps = sim.bnt_transform_kappa_maps(kappa_maps)
-            kappa_maps = sim.smooth_kappa_maps(kappa_maps)
+            kappa_maps = sim.smooth_kappa_maps(kappa_maps, fwhm_arcmin)
         else:
             kappa_maps = sim.bnt_transform_kappa_maps(kappa_maps)
-            kappa_maps = sim.smooth_kappa_maps(kappa_maps)
+            kappa_maps = sim.smooth_kappa_maps(kappa_maps, fwhm_arcmin)
             kappa_maps = sim.inverse_bnt_transform_kappa_maps(kappa_maps)
     else:
         kappa_maps = sim.smooth_kappa_maps(kappa_maps, fwhm_arcmin)
