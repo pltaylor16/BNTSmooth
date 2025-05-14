@@ -15,6 +15,7 @@ step_frac = 0.05
 delta = step_frac
 theta_fid = np.array([1.0, 1.0])
 z = np.linspace(0.01, 2.5, 500)
+fwhm = 10. #arcmin
 
 # --- Survey specification ---
 Nz = NzEuclid(nbins=nbins, z=z)
@@ -23,9 +24,9 @@ n_eff_list = [30.0 / nbins] * nbins
 sigma_eps_list = [0.26] * nbins
 
 # --- Map loading + data vector computation ---
-def compute_dvec_from_file(path, baryon_feedback, use_bnt=False):
+def compute_dvec_from_file(path, baryon_feedback, use_bnt=False, naive=False):
     fname = os.path.basename(path)
-    print(f"[{baryon_feedback=}, {use_bnt=}] Processing: {fname}", flush=True)
+    print(f"[{baryon_feedback=}, {use_bnt=}, {naive=}] Processing: {fname}", flush=True)
 
     loaded = np.load(path)
     kappa_maps = [loaded[f"slice{i}"] for i in range(nslices)]
@@ -45,13 +46,22 @@ def compute_dvec_from_file(path, baryon_feedback, use_bnt=False):
     )
 
     sim.set_cosmo()
+
     if use_bnt:
-        kappa_maps = sim.bnt_transform_kappa_maps(kappa_maps)
+        if naive:
+            kappa_maps = sim.bnt_transform_kappa_maps(kappa_maps)
+            kappa_maps = sim.smooth_kappa_maps(kappa_maps)
+        else:
+            kappa_maps = sim.bnt_transform_kappa_maps(kappa_maps)
+            kappa_maps = sim.smooth_kappa_maps(kappa_maps)
+            kappa_maps = sim.inverse_bnt_transform_kappa_maps(kappa_maps)
+    else:
+        kappa_maps = sim.smooth_kappa_maps(kappa_maps, fwhm_arcmin)
 
     return sim.compute_data_vector(kappa_maps)
 
 # --- Helper: compute Fisher matrix ---
-def compute_fisher_matrix(base_dir, baryon_feedback, use_bnt=False):
+def compute_fisher_matrix(base_dir, baryon_feedback, use_bnt=False, naive=False):
     print(f"\n=== Computing Fisher for baryon_feedback={baryon_feedback} ===")
 
     def get_paths(label):
@@ -66,7 +76,7 @@ def compute_fisher_matrix(base_dir, baryon_feedback, use_bnt=False):
 
     # Parallel data vector computation
     with multiprocessing.Pool(n_processes) as pool:
-        func = partial(compute_dvec_from_file, baryon_feedback=baryon_feedback, use_bnt=use_bnt)
+        func = partial(compute_dvec_from_file, baryon_feedback=baryon_feedback, use_bnt=use_bnt, naive=naive)
         dvecs_fid    = pool.map(func, paths_fid)
         dvecs_aplus  = pool.map(func, paths_aplus)
         dvecs_aminus = pool.map(func, paths_aminus)
@@ -102,7 +112,8 @@ def compute_fisher_matrix(base_dir, baryon_feedback, use_bnt=False):
 
     # Save
     bnt_tag = "bnt" if use_bnt else "nobnt"
-    fname = f"results/fisher_b{int(baryon_feedback)}_{bnt_tag}.npy"
+    naive_tag = "naive" if naive else "not naive"
+    fname = f"results/fisher_b{int(baryon_feedback)}_{bnt_tag}_{naive_tag}.npy"
     np.save(fname, fisher)
     print(f"Saved Fisher matrix to {fname}")
 
@@ -114,6 +125,7 @@ import argparse
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--use_bnt", action="store_true", help="Apply BNT transform before computing data vector.")
+    parser.add_argument("--niave", action="store_true", help="Naive BNT Smoothing")
     args = parser.parse_args()
 
     Path("data").mkdir(exist_ok=True)
@@ -121,7 +133,8 @@ def main():
         compute_fisher_matrix(
             base_dir="/srv/scratch2/taylor.4264/BNTSmooth_data/maps/maps",
             baryon_feedback=b_feedback,
-            use_bnt=args.use_bnt
+            use_bnt=args.use_bnt,
+            naive=naive 
         )
 
 if __name__ == "__main__":

@@ -640,6 +640,32 @@ class ProcessMaps(WeakLensingSim):
         return smoothed_map
 
 
+    def smooth_kappa_maps(kappa_maps, fwhm_arcmin, lmax=None):
+        """
+        Smooth a list of HEALPix-format kappa maps using a Gaussian kernel.
+
+        Parameters
+        ----------
+        kappa_maps : list of ndarray
+            List of kappa maps (each map is a 1D numpy array of length 12 * nside**2).
+        fwhm_arcmin : float
+            Full Width at Half Maximum of the smoothing kernel in arcminutes.
+        lmax : int, optional
+            Maximum multipole to use in the smoothing. If None, uses default from hp.smoothing.
+
+        Returns
+        -------
+        smoothed_maps : list of ndarray
+            List of smoothed kappa maps.
+        """
+        fwhm_rad = np.deg2rad(fwhm_arcmin / 60.0)  # Convert arcmin to radians
+        smoothed_maps = [
+            hp.smoothing(kmap, fwhm=fwhm_rad, lmax=lmax, verbose=False)
+            for kmap in kappa_maps
+        ]
+        return smoothed_maps
+
+
 class NzEuclid:
     def __init__(self, nbins=5, z=None, sigma_z0=0.05):
         self.nbins = nbins
