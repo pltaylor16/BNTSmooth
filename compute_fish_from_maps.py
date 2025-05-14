@@ -27,6 +27,7 @@ def compute_dvec_from_file(path, baryon_feedback):
     loaded = np.load(path)
     kappa_maps = [loaded[f"slice{i}"] for i in range(nslices)]
 
+    print ('processing maps')
     sim = ProcessMaps(
         z_array=z,
         nz_list=nz_list,
