@@ -10,7 +10,7 @@ nside = 512
 l_max = 1500
 nslices = 5
 nbins = 5
-n_processes = 20
+n_processes = 40
 step_frac = 0.05
 delta = step_frac
 theta_fid = np.array([1.0, 1.0])
@@ -24,10 +24,13 @@ sigma_eps_list = [0.26] * nbins
 
 # --- Map loading + data vector computation ---
 def compute_dvec_from_file(path, baryon_feedback):
+    # Extract file index for readable output
+    fname = os.path.basename(path)
+    print(f"[{baryon_feedback=}] Processing: {fname}", flush=True)
+
     loaded = np.load(path)
     kappa_maps = [loaded[f"slice{i}"] for i in range(nslices)]
 
-    print ('processing maps')
     sim = ProcessMaps(
         z_array=z,
         nz_list=nz_list,
