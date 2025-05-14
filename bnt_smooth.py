@@ -660,7 +660,7 @@ class ProcessMaps(WeakLensingSim):
         """
         fwhm_rad = np.deg2rad(fwhm_arcmin / 60.0)  # Convert arcmin to radians
         smoothed_maps = [
-            hp.smoothing(kmap, fwhm=fwhm_rad, lmax=lmax, verbose=False)
+            hp.smoothing(kmap, fwhm=fwhm_rad, lmax=lmax)
             for kmap in kappa_maps
         ]
         return smoothed_maps
