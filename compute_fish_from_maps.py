@@ -23,10 +23,9 @@ n_eff_list = [30.0 / nbins] * nbins
 sigma_eps_list = [0.26] * nbins
 
 # --- Map loading + data vector computation ---
-def compute_dvec_from_file(path, baryon_feedback):
-    # Extract file index for readable output
+def compute_dvec_from_file(path, baryon_feedback, use_bnt=False):
     fname = os.path.basename(path)
-    print(f"[{baryon_feedback=}] Processing: {fname}", flush=True)
+    print(f"[{baryon_feedback=}, {use_bnt=}] Processing: {fname}", flush=True)
 
     loaded = np.load(path)
     kappa_maps = [loaded[f"slice{i}"] for i in range(nslices)]
@@ -37,17 +36,21 @@ def compute_dvec_from_file(path, baryon_feedback):
         n_eff_list=n_eff_list,
         sigma_eps_list=sigma_eps_list,
         baryon_feedback=baryon_feedback,
-        alpha=1.0,  # placeholder
+        alpha=1.0,
         beta=1.0,
         seed=42,
         l_max=l_max,
         nside=nside,
         nslices=nslices
     )
+
+    if use_bnt:
+        kappa_maps = sim.bnt_transform_kappa_maps(kappa_maps)
+
     return sim.compute_data_vector(kappa_maps)
 
 # --- Helper: compute Fisher matrix ---
-def compute_fisher_matrix(base_dir, baryon_feedback):
+def compute_fisher_matrix(base_dir, baryon_feedback, use_bnt=False):
     print(f"\n=== Computing Fisher for baryon_feedback={baryon_feedback} ===")
 
     def get_paths(label):
@@ -62,11 +65,12 @@ def compute_fisher_matrix(base_dir, baryon_feedback):
 
     # Parallel data vector computation
     with multiprocessing.Pool(n_processes) as pool:
-        dvecs_fid = pool.map(partial(compute_dvec_from_file, baryon_feedback=baryon_feedback), paths_fid)
-        dvecs_aplus = pool.map(partial(compute_dvec_from_file, baryon_feedback=baryon_feedback), paths_aplus)
-        dvecs_aminus = pool.map(partial(compute_dvec_from_file, baryon_feedback=baryon_feedback), paths_aminus)
-        dvecs_bplus = pool.map(partial(compute_dvec_from_file, baryon_feedback=baryon_feedback), paths_bplus)
-        dvecs_bminus = pool.map(partial(compute_dvec_from_file, baryon_feedback=baryon_feedback), paths_bminus)
+        func = partial(compute_dvec_from_file, baryon_feedback=baryon_feedback, use_bnt=use_bnt)
+        dvecs_fid    = pool.map(func, paths_fid)
+        dvecs_aplus  = pool.map(func, paths_aplus)
+        dvecs_aminus = pool.map(func, paths_aminus)
+        dvecs_bplus  = pool.map(func, paths_bplus)
+        dvecs_bminus = pool.map(func, paths_bminus)
 
     dvecs_fid = np.stack(dvecs_fid)
     dvecs_aplus = np.stack(dvecs_aplus)
@@ -96,16 +100,28 @@ def compute_fisher_matrix(base_dir, baryon_feedback):
     fisher[1, 1] = dmu_dbeta @ inv_cov @ dmu_dbeta
 
     # Save
-    np.save(f"results/fisher_b{int(baryon_feedback)}.npy", fisher)
-    print(f"Saved Fisher matrix to data/fisher_b{int(baryon_feedback)}.npy")
+    bnt_tag = "bnt" if use_bnt else "nobnt"
+    fname = f"results/fisher_b{int(baryon_feedback)}_{bnt_tag}.npy"
+    np.save(fname, fisher)
+    print(f"Saved Fisher matrix to {fname}")
 
     return fisher
 
-# --- Run both ---
+# --- Run ---
+import argparse
+
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--use_bnt", action="store_true", help="Apply BNT transform before computing data vector.")
+    args = parser.parse_args()
+
     Path("data").mkdir(exist_ok=True)
-    for b_feedback in [7.0, 10.0]:
-        compute_fisher_matrix(base_dir="/srv/scratch2/taylor.4264/BNTSmooth_data/maps/maps", baryon_feedback=b_feedback)
+    for b_feedback in [7.0]:
+        compute_fisher_matrix(
+            base_dir="/srv/scratch2/taylor.4264/BNTSmooth_data/maps/maps",
+            baryon_feedback=b_feedback,
+            use_bnt=args.use_bnt
+        )
 
 if __name__ == "__main__":
     main()
