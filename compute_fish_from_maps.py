@@ -125,7 +125,7 @@ import argparse
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--use_bnt", action="store_true", help="Apply BNT transform before computing data vector.")
-    parser.add_argument("--niave", action="store_true", help="Naive BNT Smoothing")
+    parser.add_argument("--naive", action="store_true", help="Naive BNT Smoothing")
     args = parser.parse_args()
 
     Path("data").mkdir(exist_ok=True)
