@@ -134,7 +134,7 @@ def main():
             base_dir="/srv/scratch2/taylor.4264/BNTSmooth_data/maps/maps",
             baryon_feedback=b_feedback,
             use_bnt=args.use_bnt,
-            naive=naive 
+            naive=args.naive 
         )
 
 if __name__ == "__main__":
