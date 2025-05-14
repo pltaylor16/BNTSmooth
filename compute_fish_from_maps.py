@@ -10,7 +10,7 @@ nside = 512
 l_max = 1500
 nslices = 5
 nbins = 5
-n_processes = 70
+n_processes = 40
 step_frac = 0.05
 delta = step_frac
 theta_fid = np.array([1.0, 1.0])
@@ -23,6 +23,22 @@ nz_list = Nz.get_nz()
 n_eff_list = [30.0 / nbins] * nbins
 sigma_eps_list = [0.26] * nbins
 
+# --- Simulation template ---
+sim = ProcessMaps(
+    z_array=z,
+    nz_list=nz_list,
+    n_eff_list=n_eff_list,
+    sigma_eps_list=sigma_eps_list,
+    baryon_feedback=None,  # Set later
+    alpha=1.0,
+    beta=1.0,
+    seed=42,
+    l_max=l_max,
+    nside=nside,
+    nslices=nslices
+)
+sim.set_cosmo()
+
 # --- Map loading + data vector computation ---
 def compute_dvec_from_file(path, baryon_feedback, use_bnt=False, naive=False):
     fname = os.path.basename(path)
@@ -30,22 +46,6 @@ def compute_dvec_from_file(path, baryon_feedback, use_bnt=False, naive=False):
 
     loaded = np.load(path)
     kappa_maps = [loaded[f"slice{i}"] for i in range(nslices)]
-
-    sim = ProcessMaps(
-        z_array=z,
-        nz_list=nz_list,
-        n_eff_list=n_eff_list,
-        sigma_eps_list=sigma_eps_list,
-        baryon_feedback=baryon_feedback,
-        alpha=1.0,
-        beta=1.0,
-        seed=42,
-        l_max=l_max,
-        nside=nside,
-        nslices=nslices
-    )
-
-    sim.set_cosmo()
 
     if use_bnt:
         if naive:
@@ -82,6 +82,7 @@ def compute_fisher_matrix(base_dir, baryon_feedback, use_bnt=False, naive=False)
         dvecs_aminus = pool.map(func, paths_aminus)
         dvecs_bplus  = pool.map(func, paths_bplus)
         dvecs_bminus = pool.map(func, paths_bminus)
+
 
     dvecs_fid = np.stack(dvecs_fid)
     dvecs_aplus = np.stack(dvecs_aplus)
