@@ -61,7 +61,7 @@ def compute_dvec_from_file(path, fwhm_arcmin, baryon_feedback, use_bnt=False, na
     return sim.compute_data_vector(kappa_maps)
 
 # --- Helper: compute Fisher matrix ---
-def compute_fisher_matrix(base_dir, fwhm_arcmin. baryon_feedback, use_bnt=False, naive=False):
+def compute_fisher_matrix(base_dir, fwhm_arcmin, baryon_feedback, use_bnt=False, naive=False):
     print(f"\n=== Computing Fisher for baryon_feedback={baryon_feedback} ===")
 
     def get_paths(label):
