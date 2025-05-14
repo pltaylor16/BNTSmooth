@@ -640,7 +640,7 @@ class ProcessMaps(WeakLensingSim):
         return smoothed_map
 
 
-    def smooth_kappa_maps(kappa_maps, fwhm_arcmin, lmax=None):
+    def smooth_kappa_maps(self,kappa_maps, fwhm_arcmin, lmax=None):
         """
         Smooth a list of HEALPix-format kappa maps using a Gaussian kernel.
 
