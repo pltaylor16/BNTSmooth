@@ -44,6 +44,7 @@ def compute_dvec_from_file(path, baryon_feedback, use_bnt=False):
         nslices=nslices
     )
 
+    sim.set_cosmo()
     if use_bnt:
         kappa_maps = sim.bnt_transform_kappa_maps(kappa_maps)
 
