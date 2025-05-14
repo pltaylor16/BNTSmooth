@@ -40,7 +40,7 @@ sim = ProcessMaps(
 sim.set_cosmo()
 
 # --- Map loading + data vector computation ---
-def compute_dvec_from_file(path, baryon_feedback, use_bnt=False, naive=False):
+def compute_dvec_from_file(path, fwhm_arcmin, baryon_feedback, use_bnt=False, naive=False):
     fname = os.path.basename(path)
     print(f"[{baryon_feedback=}, {use_bnt=}, {naive=}] Processing: {fname}", flush=True)
 
@@ -61,7 +61,7 @@ def compute_dvec_from_file(path, baryon_feedback, use_bnt=False, naive=False):
     return sim.compute_data_vector(kappa_maps)
 
 # --- Helper: compute Fisher matrix ---
-def compute_fisher_matrix(base_dir, baryon_feedback, use_bnt=False, naive=False):
+def compute_fisher_matrix(base_dir, fwhm_arcmin. baryon_feedback, use_bnt=False, naive=False):
     print(f"\n=== Computing Fisher for baryon_feedback={baryon_feedback} ===")
 
     def get_paths(label):
@@ -76,7 +76,7 @@ def compute_fisher_matrix(base_dir, baryon_feedback, use_bnt=False, naive=False)
 
     # Parallel data vector computation
     with multiprocessing.Pool(n_processes) as pool:
-        func = partial(compute_dvec_from_file, baryon_feedback=baryon_feedback, use_bnt=use_bnt, naive=naive)
+        func = partial(compute_dvec_from_file, fwhm_arcmin=fwhm_arcmin, baryon_feedback=baryon_feedback, use_bnt=use_bnt, naive=naive)
         dvecs_fid    = pool.map(func, paths_fid)
         dvecs_aplus  = pool.map(func, paths_aplus)
         dvecs_aminus = pool.map(func, paths_aminus)
@@ -134,6 +134,7 @@ def main():
         compute_fisher_matrix(
             base_dir="/srv/scratch2/taylor.4264/BNTSmooth_data/maps/maps",
             baryon_feedback=b_feedback,
+            fwhm_arcmin=fwhm_arcmin,
             use_bnt=args.use_bnt,
             naive=args.naive 
         )
