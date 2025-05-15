@@ -609,7 +609,7 @@ class ProcessMaps(WeakLensingSim):
             theta_arcmin = theta_rad * arcmin_per_rad
             print(f"  Bin {i + 1}: {theta_arcmin:.2f} arcmin")
 
-            smoothed = hp.smoothing(kappa, fwhm=theta_rad, verbose=False)
+            smoothed = hp.smoothing(kappa, fwhm=theta_rad)
             smoothed_maps.append(smoothed)
 
         return smoothed_maps
@@ -653,7 +653,7 @@ class ProcessMaps(WeakLensingSim):
         theta_arcmin = theta_rad * (180.0 / np.pi) * 60.0
         print(f"Smoothing scale: {theta_arcmin:.2f} arcmin (mean χ = {mean_chi:.2f} Mpc)")
 
-        smoothed_map = hp.smoothing(kappa_map, fwhm=theta_rad, verbose=False)
+        smoothed_map = hp.smoothing(kappa_map, fwhm=theta_rad)
         return smoothed_map
 
 
