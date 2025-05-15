@@ -666,6 +666,29 @@ class ProcessMaps(WeakLensingSim):
         return smoothed_maps
 
 
+    def bnt_smoothing(self, kappa_maps, physical_scale_mpc):
+
+        kappa_bnt = self.bnt_transform_kappa_maps(kappa_maps)
+        q_bnt_list = self.bnt_transform_lensing_kernels()
+        chi_arr, _ = self.get_lensing_kernels_on_z_grid()
+        mean_chis_bnt = self.compute_kernel_weighted_mean_chi(chi_arr, q_bnt_list)
+        smooth_maps_bnt = self.smooth_kappa_maps_by_physical_scale(physical_scale_mpc, mean_chis_bnt, kappa_maps)
+        smooth_maps = self.inverse_bnt_transform_kappa_maps(smooth_maps_bnt)
+
+        return smooth_maps
+
+    def smoothing(self, kappa_maps, physical_scale_mpc):
+
+
+        chi_arr, q_list = self.get_lensing_kernels_on_z_grid()
+        mean_chis = self.compute_kernel_weighted_mean_chi(chi_arr, q_list)
+        smooth_maps = self.smooth_kappa_maps_by_physical_scale(physical_scale_mpc, mean_chis, kappa_maps)
+
+
+        return smooth_maps
+
+
+
 
 class NzEuclid:
     def __init__(self, nbins=5, z=None, sigma_z0=0.05):
