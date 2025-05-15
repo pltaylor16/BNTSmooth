@@ -11,7 +11,7 @@ class WeakLensingSim:
     def __init__(self, z_array, nz_list, n_eff_list, sigma_eps_list,
                  baryon_feedback=7., seed=42,
                  alpha=1.0, beta=1.0,
-                 l_max=256, nside=256, nslices=20, cosmo_params=None):
+                 l_max=256, nside=256, nslices=20, cosmo_params=None, baryon_smooth_mpc=None):
         """
         Initialize the lognormal weak lensing simulation with exponential mapping parameters.
 
@@ -30,9 +30,9 @@ class WeakLensingSim:
         seed : int
             Random seed for reproducibility.
         alpha : float
-            strength of gaussian signal
+            Strength of Gaussian signal.
         beta : float
-            non-gaussianity parameter
+            Non-Gaussianity parameter for lognormal transformation.
         l_max : int
             Maximum multipole for power spectrum generation.
         nside : int
@@ -41,6 +41,9 @@ class WeakLensingSim:
             Number of redshift slices for shell integration.
         cosmo_params : dict, optional
             Additional cosmological parameters to override defaults.
+        baryon_smooth_mpc : float or None
+            Physical smoothing scale (in Mpc) applied to transformed matter maps after skewing.
+            If None, no additional smoothing is applied.
         """
         self.z_array = z_array
         self.zmax = z_array.max()
@@ -74,6 +77,7 @@ class WeakLensingSim:
             "n_s": 0.96
         }
         self.cosmo_params["sigma8"] = 0.8
+        self. baryon_smooth_mpc = baryon_smooth_mpc
 
 
 
@@ -159,77 +163,36 @@ class WeakLensingSim:
 
     def make_skewed_delta_maps(self, maps):
         """
-        Apply a nonlinear skewing transformation using maps_fixed for the nonlinear part
-        and maps_current for the linear input. Specifically:
+        Apply a nonlinear skewing transformation to Gaussian δ fields using a lognormal-like expansion,
+        followed by optional physical smoothing in comoving Mpc if `baryon_smooth_mpc` is set.
 
-            y[i] = x[i] + beta**2 * (0.5 * x[i]^2 + 1/6 x[i]^3 + ...)
+        The transformation is:
+            y[i] = α * x[i] + β * (1/2 x[i]^2 + 1/6 x[i]^3 + ...)
+
+        After the transformation, the map is rescaled to match the variance of the linear component α * x.
+        If baryon_smooth_mpc is not None, each transformed map is smoothed with a Gaussian kernel
+        corresponding to the given physical scale at the comoving distance of its redshift shell.
 
         Parameters
         ----------
         maps : list of ndarray
-            Gaussian δ fields 
-
+            Gaussian δ fields, one per redshift shell.
 
         Returns
         -------
         transformed_maps : list of ndarray
-            Transformed δ fields with same variance as input maps_current.
+            Nonlinearly transformed (and optionally smoothed) δ fields.
         """
         beta = self.beta
         alpha = self.alpha
         transformed_maps = []
 
-        for x in maps:
+        # Get comoving shell midpoints
+        _, chi_eff, _ = self.get_shell_zchi()
 
-            z = alpha * x
-            y = z + beta * (
-                (1/2.0) * x**2 +
-                (1/6.0) * x**3 +
-                (1/24.0) * x**4 +
-                (1/120.0) * x**5 +
-                (1/720.0) * x**6 +
-                (1/5040.0) * x**7 +
-                (1/40320.0) * x**8 +
-                (1/362880.0) * x**9 +
-                (1/3628800.0) * x**10
-            )
-
-            var_z = np.var(z)
-            var_y = np.var(y)
-            y *= np.sqrt(var_z / var_y) 
-            transformed_maps.append(y)
-
-        return transformed_maps
-
-
-    def make_skewed_delta_maps_new(self, maps):
-        """
-        Apply a nonlinear skewing transformation using maps_fixed for the nonlinear part
-        and maps_current for the linear input. Specifically:
-
-            y[i] = x[i] + beta**2 * (0.5 * x[i]^2 + 1/6 x[i]^3 + ...)
-
-        Then smooth y with 5 arcmin FWHM and replace top 20% residuals with smoothed value.
-
-        Parameters
-        ----------
-        maps : list of ndarray
-            Gaussian δ fields 
-
-        Returns
-        -------
-        transformed_maps : list of ndarray
-            Transformed δ fields with selective smoothing applied.
-        """
-        import healpy as hp
-        beta = self.beta
-        alpha = self.alpha
-        transformed_maps = []
-
-        for x in maps:
-
-            z = alpha * x
-            y = z + beta * (
+        for i, x in enumerate(maps):
+            z = self.alpha * x
+            y = z + self.beta * (
                 (1/2.0) * x**2 +
                 (1/6.0) * x**3 +
                 (1/24.0) * x**4 +
@@ -245,12 +208,13 @@ class WeakLensingSim:
             var_y = np.var(y)
             y *= np.sqrt(var_z / var_y)
 
-            # --- Smooth with 5 arcmin FWHM ---
-            fwhm_rad = np.deg2rad(5.0 / 60.0)
-            y_smooth = hp.smoothing(y, fwhm=fwhm_rad, verbose=False)
+            if self.baryon_smooth_mpc is not None:
+                chi = chi_eff[i]
+                theta_rad = self.baryon_smooth_mpc / chi
+                y = hp.smoothing(y, fwhm=theta_rad)
 
+            transformed_maps.append(y)
 
-        return y_smooth
 
 
 
