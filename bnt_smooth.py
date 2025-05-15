@@ -202,6 +202,57 @@ class WeakLensingSim:
         return transformed_maps
 
 
+    def make_skewed_delta_maps_new(self, maps):
+        """
+        Apply a nonlinear skewing transformation using maps_fixed for the nonlinear part
+        and maps_current for the linear input. Specifically:
+
+            y[i] = x[i] + beta**2 * (0.5 * x[i]^2 + 1/6 x[i]^3 + ...)
+
+        Then smooth y with 5 arcmin FWHM and replace top 20% residuals with smoothed value.
+
+        Parameters
+        ----------
+        maps : list of ndarray
+            Gaussian δ fields 
+
+        Returns
+        -------
+        transformed_maps : list of ndarray
+            Transformed δ fields with selective smoothing applied.
+        """
+        import healpy as hp
+        beta = self.beta
+        alpha = self.alpha
+        transformed_maps = []
+
+        for x in maps:
+
+            z = alpha * x
+            y = z + beta * (
+                (1/2.0) * x**2 +
+                (1/6.0) * x**3 +
+                (1/24.0) * x**4 +
+                (1/120.0) * x**5 +
+                (1/720.0) * x**6 +
+                (1/5040.0) * x**7 +
+                (1/40320.0) * x**8 +
+                (1/362880.0) * x**9 +
+                (1/3628800.0) * x**10
+            )
+
+            var_z = np.var(z)
+            var_y = np.var(y)
+            y *= np.sqrt(var_z / var_y)
+
+            # --- Smooth with 5 arcmin FWHM ---
+            fwhm_rad = np.deg2rad(5.0 / 60.0)
+            y_smooth = hp.smoothing(y, fwhm=fwhm_rad, verbose=False)
+
+
+        return y_smooth
+
+
 
     def get_shell_zchi(self):
         """
