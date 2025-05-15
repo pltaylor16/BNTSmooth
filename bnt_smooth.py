@@ -215,6 +215,8 @@ class WeakLensingSim:
 
             transformed_maps.append(y)
 
+        return transformed_maps
+
 
 
 
