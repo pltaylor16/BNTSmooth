@@ -47,9 +47,10 @@ def compute_dvec_from_file(path, fwhm_arcmin, baryon_feedback, physical_scale_mp
     kappa_maps = [loaded[f"slice{i}"] for i in range(nslices)]
 
     if use_bnt:
-        kappa_maps = sim.smoothing(kappa_maps, physical_scale_mpc)
+    	kappa_maps = sim.bnt_smoothing(kappa_maps, physical_scale_mpc)
     else:
-        kappa_maps = sim.bnt_smoothing(kappa_maps, physical_scale_mpc)
+    	kappa_maps = sim.smoothing(kappa_maps, physical_scale_mpc)
+        
 
     return sim.compute_data_vector(kappa_maps)
 

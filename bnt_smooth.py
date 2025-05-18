@@ -706,7 +706,6 @@ class ProcessMaps(WeakLensingSim):
 
 
 
-
 class NzEuclid:
     def __init__(self, nbins=5, z=None, sigma_z0=0.05):
         self.nbins = nbins
