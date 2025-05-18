@@ -188,7 +188,7 @@ class WeakLensingSim:
         transformed_maps = []
 
         # Get comoving shell midpoints
-        _, chi_eff, _ = self.get_shell_zchi()
+        z_eff, chi_eff, _ = self.get_shell_zchi()
 
         for i, x in enumerate(maps):
             z = self.alpha * x
@@ -211,7 +211,8 @@ class WeakLensingSim:
             if self.baryon_smooth_mpc is not None:
                 chi = chi_eff[i]
                 theta_rad = self.baryon_smooth_mpc / chi
-                y = hp.smoothing(y, fwhm=theta_rad)
+                # actually want the smoothing to decrease with redshift
+                y = hp.smoothing(y, fwhm=theta_rad * (1. - z_eff/2.5))
 
             transformed_maps.append(y)
 

@@ -116,7 +116,7 @@ def main():
     args = parser.parse_args()
 
     Path("data").mkdir(exist_ok=True)
-    for smooth_mpc in [7., 13., 16.]:
+    for smooth_mpc in [1., 2., 4., 6., 8., 10., 12., 14.]:
         compute_dvecs(
             base_dir="/srv/scratch2/taylor.4264/BNTSmooth_data/maps/maps",
             baryon_feedback=7.0,
