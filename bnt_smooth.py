@@ -701,7 +701,7 @@ class ProcessMaps(WeakLensingSim):
 
     def smoothing_one_scale(self, kappa_maps, physical_scale_mpc):
         smooth_maps = []
-        z = self.z
+        z = self.z_array
         N = NzEuclid(nbins=1, z=z)
         nz_arr = N.get_nz()[0]
         for i in range(self.nbins):
