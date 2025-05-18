@@ -212,7 +212,7 @@ class WeakLensingSim:
                 chi = chi_eff[i]
                 theta_rad = self.baryon_smooth_mpc / chi
                 # actually want the smoothing to decrease with redshift
-                y = hp.smoothing(y, fwhm=theta_rad * (1. - z_eff/2.5))
+                y = hp.smoothing(y, fwhm=theta_rad * (1. - z_eff[i]/2.5))
 
             transformed_maps.append(y)
 
