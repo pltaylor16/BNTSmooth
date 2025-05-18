@@ -705,7 +705,7 @@ class ProcessMaps(WeakLensingSim):
         N = NzEuclid(nbins=1, z=z)
         nz_arr = N.get_nz()[0]
         for i in range(self.nbins):
-            new = self.smooth_kappa_map_by_single_physical_scale(physical_scale_mpc, z, nz_arr, kappa_map)
+            new = self.smooth_kappa_map_by_single_physical_scale(physical_scale_mpc, z, nz_arr, kappa_maps[i])
             smooth_maps += [new]
         return smooth_maps
 
