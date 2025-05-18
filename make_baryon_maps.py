@@ -44,7 +44,7 @@ def worker(args):
         l_max=l_max,
         nside=nside,
         nslices=nslices,
-        baryon_smooth_mpc=0.3,
+        baryon_smooth_mpc=0.4,
     )
 
     kappa_maps = sim.generate_noisy_kappa_maps()
