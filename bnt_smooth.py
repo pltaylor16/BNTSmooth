@@ -646,7 +646,7 @@ class ProcessMaps(WeakLensingSim):
             mask = chi_s > chi
             integrand = np.zeros_like(chi_s)
             integrand[mask] = (chi_s[mask] - chi) / chi_s[mask] * nz_arr[mask]
-            q[i] = chi[i] * np.trapz(integrand, z_arr)
+            q[i] = chi * np.trapz(integrand, z_arr)
 
         mean_chi = np.trapz(chi_arr * q, chi_arr) / np.trapz(q, chi_arr)
         theta_rad = physical_scale_mpc / mean_chi
@@ -703,7 +703,7 @@ class ProcessMaps(WeakLensingSim):
         smooth_maps = []
         z = self.z_array
         N = NzEuclid(nbins=1, z=z)
-        nz_arr = N.get_nz()[0]
+        nz_arr = N.get_nz()[0][1]
         for i in range(self.nbins):
             new = self.smooth_kappa_map_by_single_physical_scale(physical_scale_mpc, z, nz_arr, kappa_maps[i])
             smooth_maps += [new]
